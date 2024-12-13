@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Tìm Bao Đóng{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h2 class="mb-0"><i class="fas fa-search me-2"></i>Tìm Bao Đóng</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate>
+            <div class="mb-4">
+                <label for="attributes" class="form-label">
+                    <i class="fas fa-list me-2"></i>Thuộc tính
+                </label>
+                <input type="text" class="form-control form-control-lg" 
+                       id="attributes" name="attributes" required
+                       placeholder="Nhập các thuộc tính (VD: A, B, C)">
+                <div class="invalid-feedback">
+                    Vui lòng nhập thuộc tính
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label for="dependencies" class="form-label">
+                    <i class="fas fa-arrow-right me-2"></i>Phụ thuộc hàm
+                </label>
+                <input type="text" class="form-control form-control-lg" 
+                       id="dependencies" name="dependencies" required
+                       placeholder="Nhập phụ thuộc hàm (VD: A->B, B->C)">
+                <div class="invalid-feedback">
+                    Vui lòng nhập phụ thuộc hàm
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-calculator me-2"></i>Tính toán
+                </button>
+            </div>
+        </form>
+
+        {% if result %}
+        <div class="result mt-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>Kết quả
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {{ result|format_closure_result|safe }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.step-item {
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 4px solid #3498db;
+}
+
+.closure-set {
+    background-color: #e8f5e9;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #2ecc71;
+}
+
+.result-container {
+    font-size: 1.1rem;
+}
+</style>
+{% endblock %}

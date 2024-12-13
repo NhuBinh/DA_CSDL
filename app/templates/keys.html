@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}Tìm Khóa{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h2 class="mb-0"><i class="fas fa-key me-2"></i>Tìm Khóa</h2>
+    </div>
+    <div class="card-body">
+        <!-- Loại bỏ action và method khỏi form -->
+        <form id="keyForm" class="needs-validation" novalidate>
+            <div class="mb-4">
+                <label for="keysAttributes" class="form-label">
+                    <i class="fas fa-list me-2"></i>Tập thuộc tính
+                </label>
+                <input type="text" class="form-control form-control-lg" 
+                       id="keysAttributes" required
+                       placeholder="Nhập các thuộc tính (VD: A, B, C)">
+                <div class="invalid-feedback">
+                    Vui lòng nhập tập thuộc tính
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label for="keyFunctionalDependencies" class="form-label">
+                    <i class="fas fa-arrow-right me-2"></i>Tập phụ thuộc hàm
+                </label>
+                <textarea class="form-control" id="keyFunctionalDependencies" 
+                          rows="4" required
+                          placeholder="Nhập tập phụ thuộc hàm (VD: A->B, B->C)"></textarea>
+                <div class="invalid-feedback">
+                    Vui lòng nhập tập phụ thuộc hàm
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-search me-2"></i>Tìm khóa
+                </button>
+                <button type="button" id="btnExample" class="btn btn-outline-secondary">
+                    <i class="fas fa-lightbulb me-2"></i>Xem ví dụ
+                </button>
+            </div>
+        </form>
+
+        <div id="keyResult" class="mt-4 d-none">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>Kết quả
+                    </h4>
+                </div>
+                <div class="card-body" id="keyOutput">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Thêm jQuery nếu chưa có -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Form submit handler
+    $('#keyForm').on('submit', function(e) {
+        e.preventDefault(); // Ngăn form submit mặc định
+
+        // Lấy dữ liệu từ form
+        const attributes = $('#keysAttributes').val().trim();
+        const dependencies = $('#keyFunctionalDependencies').val().trim();
+
+        // Validate
+        if (!attributes || !dependencies) {
+            alert('Vui lòng nhập đầy đủ thông tin');
+            return;
+        }
+
+        // Hiển thị loading
+        $('#keyResult').removeClass('d-none');
+        $('#keyOutput').html(`
+            <div class="text-center p-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Đang xử lý...</span>
+                </div>
+                <p class="mt-2">Đang tìm khóa...</p>
+            </div>
+        `);
+
+        // Gọi API
+        $.ajax({
+            url: '/api/keys',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                Attributes: attributes,
+                FunctionalDependencies: dependencies
+            }),
+            success: function(response) {
+                // Hiển thị kết quả
+                $('#keyOutput').html(`
+                    <div class="result-container">
+                        <div class="superkeys mb-4">
+                            <h5 class="text-primary">
+                                <i class="fas fa-key me-2"></i>Siêu Khóa:
+                            </h5>
+                            <p class="ms-4 fw-bold">${response.superKeys.join('; ')}</p>
+                        </div>
+                        <div class="keys">
+                            <h5 class="text-success">
+                                <i class="fas fa-check-circle me-2"></i>Khóa:
+                            </h5>
+                            <p class="ms-4 fw-bold">${response.keys.join('; ')}</p>
+                        </div>
+                        ${response.steps ? `
+                            <div class="steps mt-4">
+                                <h5 class="text-info">
+                                    <i class="fas fa-list-ol me-2"></i>Các bước thực hiện:
+                                </h5>
+                                <div class="ms-4">
+                                    ${response.steps.map(step => `<p>${step}</p>`).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `);
+            },
+            error: function(xhr) {
+                const errorMessage = xhr.responseJSON?.error || 'Đã xảy ra lỗi không xác định';
+                $('#keyOutput').html(`
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>${errorMessage}
+                    </div>
+                `);
+            }
+        });
+    });
+
+    // Example button handler
+    $('#btnExample').click(function() {
+        $('#keysAttributes').val('A, B, C, D');
+        $('#keyFunctionalDependencies').val('A->B, B->C, AB->D');
+    });
+});
+</script>
+
+<style>
+.result-container {
+    font-size: 1.1rem;
+}
+.superkeys, .keys, .steps {
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    border-left: 4px solid;
+    margin-bottom: 15px;
+}
+.superkeys {
+    border-left-color: #3498db;
+}
+.keys {
+    border-left-color: #2ecc71;
+}
+.steps {
+    border-left-color: #17a2b8;
+}
+.steps p {
+    margin-bottom: 0.5rem;
+    padding-left: 1rem;
+    border-left: 2px solid #dee2e6;
+}
+</style>
+{% endblock %}
