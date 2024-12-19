@@ -7,7 +7,6 @@
         <h2 class="mb-0"><i class="fas fa-key me-2"></i>Tìm Khóa</h2>
     </div>
     <div class="card-body">
-        <!-- Loại bỏ action và method khỏi form -->
         <form id="keyForm" class="needs-validation" novalidate>
             <div class="mb-4">
                 <label for="keysAttributes" class="form-label">
@@ -43,14 +42,63 @@
             </div>
         </form>
 
+        <!-- Thay thế phần #keyResult trong file keys.html -->
         <div id="keyResult" class="mt-4 d-none">
             <div class="card">
                 <div class="card-header bg-success text-white">
                     <h4 class="mb-0">
-                        <i class="fas fa-check-circle me-2"></i>Kết quả
+                        <i class="fas fa-check-circle me-2"></i>Kết quả phân tích
                     </h4>
                 </div>
-                <div class="card-body" id="keyOutput">
+                <div class="card-body">
+                    <!-- Initial Sets Section -->
+                    <div class="mb-4">
+                        <h5 class="text-primary">
+                            <i class="fas fa-project-diagram me-2"></i>Các tập ban đầu
+                        </h5>
+                        <div class="ms-4">
+                            <p class="mb-2">
+                                <strong>Tập nguồn (TN):</strong>
+                                <span id="TN" class="badge bg-info text-dark"></span>
+                            </p>
+                            <p class="mb-0">
+                                <strong>Tập trung gian (TG):</strong>
+                                <span id="TG" class="badge bg-info text-dark"></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Keys Section -->
+                    <div id="directKeys" class="mb-4 d-none">
+                        <h5 class="text-success">
+                            <i class="fas fa-key me-2"></i>Kết luận
+                        </h5>
+                        <div class="alert alert-success">
+                            <p class="mb-1"><strong>Khóa duy nhất là:</strong> <span id="singleKey"></span></p>
+                            <p class="mb-0" id="conclusionReason">
+                                <!-- Lý do sẽ được điền động bằng JavaScript -->
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Results Table Section -->
+                    <div id="analysisTable" class="table-responsive">
+                        <h5 class="text-primary mb-3">
+                            <i class="fas fa-table me-2"></i>Bảng phân tích khóa
+                        </h5>
+                        <table id="resultTable" class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Xi</th>
+                                    <th>k = TN ∪ Xi</th>
+                                    <th>k<sup>+</sup></th>
+                                    <th>Siêu khóa</th>
+                                    <th>Khóa</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -59,36 +107,33 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Thêm jQuery nếu chưa có -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Form submit handler
     $('#keyForm').on('submit', function(e) {
-        e.preventDefault(); // Ngăn form submit mặc định
-
-        // Lấy dữ liệu từ form
+        e.preventDefault();
         const attributes = $('#keysAttributes').val().trim();
         const dependencies = $('#keyFunctionalDependencies').val().trim();
 
-        // Validate
         if (!attributes || !dependencies) {
             alert('Vui lòng nhập đầy đủ thông tin');
             return;
         }
 
-        // Hiển thị loading
+        // Show loading state
         $('#keyResult').removeClass('d-none');
-        $('#keyOutput').html(`
-            <div class="text-center p-4">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Đang xử lý...</span>
-                </div>
-                <p class="mt-2">Đang tìm khóa...</p>
-            </div>
+        $('#TN, #TG').empty();
+        $('#resultTable tbody').html(`
+            <tr>
+                <td colspan="5" class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Đang xử lý...</span>
+                    </div>
+                </td>
+            </tr>
         `);
 
-        // Gọi API
+        // Call API
         $.ajax({
             url: '/api/keys',
             method: 'POST',
@@ -97,78 +142,102 @@ $(document).ready(function() {
                 Attributes: attributes,
                 FunctionalDependencies: dependencies
             }),
+            // Thay thế phần success callback trong ajax call
             success: function(response) {
-                // Hiển thị kết quả
-                $('#keyOutput').html(`
-                    <div class="result-container">
-                        <div class="superkeys mb-4">
-                            <h5 class="text-primary">
-                                <i class="fas fa-key me-2"></i>Siêu Khóa:
-                            </h5>
-                            <p class="ms-4 fw-bold">${response.superKeys.join('; ')}</p>
-                        </div>
-                        <div class="keys">
-                            <h5 class="text-success">
-                                <i class="fas fa-check-circle me-2"></i>Khóa:
-                            </h5>
-                            <p class="ms-4 fw-bold">${response.keys.join('; ')}</p>
-                        </div>
-                        ${response.steps ? `
-                            <div class="steps mt-4">
-                                <h5 class="text-info">
-                                    <i class="fas fa-list-ol me-2"></i>Các bước thực hiện:
-                                </h5>
-                                <div class="ms-4">
-                                    ${response.steps.map(step => `<p>${step}</p>`).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                `);
+                if (!response.success) {
+                    $('#keyResult').addClass('d-none');
+                    alert('Lỗi: ' + (response.error || 'Không xác định'));
+                    return;
+                }
+
+                // Update initial sets
+                $('#TN').text(response.TN);
+                $('#TG').text(response.TG);
+
+                if (response.skip_table) {
+                    // Hiển thị kết quả trực tiếp nếu có điều kiện dừng
+                    $('#directKeys').removeClass('d-none');
+                    $('#singleKey').text(response.keys[0]);
+                    
+                    // Hiển thị lý do cụ thể
+                    const reason = response.stop_reason === 'empty_tg' 
+                        ? 'Do TG = ∅ (tập trung gian rỗng)'
+                        : 'Do TN+ = Q+ (bao đóng của tập nguồn bằng bao đóng thuộc tính)';
+                    $('#conclusionReason').text(reason);
+                    
+                    $('#analysisTable').addClass('d-none');
+                }else {
+                    // Hiển thị bảng phân tích nếu cần
+                    $('#directKeys').addClass('d-none');
+                    $('#analysisTable').removeClass('d-none');
+                    
+                    // Update results table
+                    const rows = response.table_data.map(row => `
+                        <tr>
+                            <td>${row.xi || '∅'}</td>
+                            <td>${row.k}</td>
+                            <td>${row.k_plus}</td>
+                            <td>
+                                <span class="badge ${row.sk === 'Yes' ? 'bg-success' : 'bg-secondary'}">
+                                    ${row.sk}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge ${row.key === 'Yes' ? 'bg-success' : 'bg-secondary'}">
+                                    ${row.key}
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('');
+                    $('#resultTable tbody').html(rows);
+                }
+                
+                // Show result section
+                $('#keyResult').removeClass('d-none');
             },
             error: function(xhr) {
-                const errorMessage = xhr.responseJSON?.error || 'Đã xảy ra lỗi không xác định';
-                $('#keyOutput').html(`
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-circle me-2"></i>${errorMessage}
-                    </div>
-                `);
+                $('#keyResult').addClass('d-none');
+                const message = xhr.responseJSON?.error || 'Lỗi không xác định';
+                alert(`Đã xảy ra lỗi: ${message}`);
             }
         });
     });
 
-    // Example button handler
     $('#btnExample').click(function() {
         $('#keysAttributes').val('A, B, C, D');
-        $('#keyFunctionalDependencies').val('A->B, B->C, AB->D');
+        $('#keyFunctionalDependencies').val('A->B, B->C, C->D');
     });
 });
 </script>
 
 <style>
-.result-container {
-    font-size: 1.1rem;
+#resultTable {
+    width: 100%;
+    margin-bottom: 1rem;
 }
-.superkeys, .keys, .steps {
-    padding: 15px;
-    border-radius: 8px;
+
+#resultTable th {
     background-color: #f8f9fa;
-    border-left: 4px solid;
-    margin-bottom: 15px;
+    text-align: center;
+    vertical-align: middle;
 }
-.superkeys {
-    border-left-color: #3498db;
+
+#resultTable td {
+    vertical-align: middle;
+    text-align: center;
 }
-.keys {
-    border-left-color: #2ecc71;
+
+.badge {
+    font-size: 0.9em;
+    padding: 0.4em 0.8em;
 }
-.steps {
-    border-left-color: #17a2b8;
+
+.card-body {
+    padding: 1.5rem;
 }
-.steps p {
-    margin-bottom: 0.5rem;
-    padding-left: 1rem;
-    border-left: 2px solid #dee2e6;
+
+.table-responsive {
+    margin-top: 1rem;
 }
 </style>
 {% endblock %}

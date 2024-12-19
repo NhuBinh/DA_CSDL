@@ -1,15 +1,55 @@
 from flask import Blueprint, render_template, request, jsonify
+from .logic.keys import process_keys  # Chỉ import process_keys
 from .logic.closure import closure
-from .logic.keys import KeyFinder
 from .logic.armstrong import check_armstrong
 
 main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    # Chuyển về trang keys làm trang chính
     return render_template('base.html')
 
+@main.route('/keys')
+def find_keys_page():
+    return render_template('keys.html')
+
+@main.route('/api/keys', methods=['POST'])
+def find_keys_api():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Dữ liệu không hợp lệ'}), 400
+
+        attributes = data.get('Attributes', '').strip()
+        dependencies = data.get('FunctionalDependencies', '').strip()
+
+        if not attributes or not dependencies:
+            return jsonify({
+                'error': 'Vui lòng nhập đầy đủ tập thuộc tính và phụ thuộc hàm'
+            }), 400
+
+        # Sử dụng hàm process_keys
+        result = process_keys(attributes, dependencies)
+        
+        if not result['success']:
+            return jsonify({
+                'error': f"Lỗi xử lý: {result.get('error', 'Không xác định')}"
+            }), 400
+
+        return jsonify({
+            'success': True,
+            'TN': result['TN'],
+            'TG': result['TG'],
+            'skip_table': result.get('skip_table', False),
+            'keys': result.get('keys', []),
+            'table_data': result.get('table_data', []),
+            'stop_reason': result.get('stop_reason', None)  # Thêm lý do dừng
+        })
+
+    except Exception as e:
+        return jsonify({
+            'error': f'Lỗi server: {str(e)}'
+        }), 500
 @main.route('/closure', methods=['GET', 'POST'])
 def find_closure():  # Giữ tên route là 'closure' nhưng tên function là 'find_closure'
     if request.method == 'POST':
@@ -33,49 +73,6 @@ def find_closure():  # Giữ tên route là 'closure' nhưng tên function là '
                                  error=f"Lỗi: {str(e)}")
             
     return render_template('closure.html')
-
-
-@main.route('/api/keys', methods=['POST'])
-def find_keys_api():
-    """API endpoint xử lý tìm khóa và siêu khóa"""
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Dữ liệu không hợp lệ'}), 400
-
-        attributes = data.get('Attributes', '').strip()
-        dependencies = data.get('FunctionalDependencies', '').strip().replace(', ', ',')
-
-        if not attributes or not dependencies:
-            return jsonify({'error': 'Thiếu thông tin đầu vào'}), 400
-
-        # Chuyển dấu phẩy thành dấu chấm phẩy cho phụ thuộc hàm
-        dependencies = dependencies.replace(',', ';')
-
-        finder = KeyFinder(attributes, dependencies)
-        result = finder.find_keys()
-
-        if not result['success']:
-            return jsonify({'error': result['steps'][0]}), 400
-
-        # Format kết quả trước khi trả về
-        formatted_superkeys = [','.join(sk) for sk in result['superkeys']]
-        formatted_keys = [','.join(k) for k in result['keys']]
-
-        return jsonify({
-            'superKeys': formatted_superkeys,
-            'keys': formatted_keys,
-            'steps': result['steps']
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@main.route('/keys')
-def keys():  # Đổi tên function để tránh trùng với module
-    """Route hiển thị trang tìm khóa"""
-    return render_template('keys.html')
-
 @main.route('/armstrong', methods=['GET', 'POST'])
 def armstrong():
     """
