@@ -54,47 +54,79 @@ def calculate_closure_with_steps(attributes, fds):
 
 def check_armstrong(fd_to_check, original_fds):
     """
-    Kiểm tra và chứng minh Armstrong rule cho phụ thuộc hàm cần kiểm tra
+    Kiểm tra và chứng minh áp dụng hệ tiên đề Armstrong
     """
     result = {
         'is_valid': False,
-        'steps': [],
-        'closure_steps': []
+        'steps': []
     }
 
     try:
-        # Bước 1: Tách vế trái và vế phải của phụ thuộc cần kiểm tra
+        # Phân tích phụ thuộc hàm cần chứng minh
         left, right = fd_to_check.split('->')
-        left_attrs = set(left.strip().split(','))
-        right_attrs = set(right.strip().split(','))
+        X = set(attr.strip() for attr in left.split(','))
+        target = set(attr.strip() for attr in right.split(','))
 
-        result['steps'].append(f"1. Phân tích phụ thuộc cần chứng minh: {fd_to_check}")
-        result['steps'].append(f"   - Vế trái (α): {', '.join(sorted(left_attrs))}")
-        result['steps'].append(f"   - Vế phải (β): {', '.join(sorted(right_attrs))}")
+        result['steps'].append("1. Phân tích phụ thuộc hàm cần chứng minh:")
+        result['steps'].append(f"   X = {', '.join(sorted(X))} (vế trái)")
+        result['steps'].append(f"   Y = {', '.join(sorted(target))} (vế phải)")
 
-        # Bước 2: Tính bao đóng của vế trái
-        closure_result = calculate_closure_with_steps(left_attrs, original_fds)
-        result['closure_steps'] = closure_result['steps']
-        final_closure = closure_result['closure']
+        # Tập kết quả hiện tại (bao gồm X và các thuộc tính đã suy ra)
+        current_set = set(X)
+        applied_rules = []
 
-        result['steps'].append(f"\n2. Tính bao đóng của {', '.join(sorted(left_attrs))}+:")
-        for step in closure_result['steps']:
-            result['steps'].append(f"   {step}")
+        # Lặp cho đến khi không thể áp dụng thêm luật nào
+        while True:
+            initial_size = len(current_set)
+            
+            # Thử áp dụng từng phụ thuộc hàm
+            for fd in original_fds:
+                left_side = set(fd['left'])
+                right_side = set(fd['right'])
 
-        # Bước 3: Kiểm tra kết quả
-        is_valid = right_attrs.issubset(final_closure)
-        result['is_valid'] = is_valid
+                # 1. Luật phản xạ
+                if target.issubset(current_set):
+                    result['steps'].append("\n2. Áp dụng luật phản xạ:")
+                    result['steps'].append(f"   {', '.join(sorted(current_set))} → {', '.join(sorted(target))}")
+                    result['is_valid'] = True
+                    return result
 
-        if is_valid:
-            result['steps'].append(f"\n3. Kết luận: {', '.join(sorted(right_attrs))} ⊆ {', '.join(sorted(final_closure))}")
-            result['steps'].append("   => Phụ thuộc hàm này có thể suy diễn từ tập F theo quy tắc Armstrong")
+                # 2. Luật tăng trưởng
+                if left_side.issubset(current_set):
+                    new_attrs = right_side - current_set
+                    if new_attrs:
+                        current_set.update(right_side)
+                        result['steps'].append("\n3. Áp dụng luật tăng trưởng:")
+                        result['steps'].append(f"   {', '.join(sorted(left_side))} → {', '.join(sorted(right_side))}")
+                        result['steps'].append(f"   Thêm: {', '.join(sorted(new_attrs))}")
+                        result['steps'].append(f"   Kết quả: {', '.join(sorted(current_set))}")
+
+                # 3. Luật bắc cầu
+                for fd2 in original_fds:
+                    if right_side == set(fd2['left']) and set(fd2['right']) - current_set:
+                        result['steps'].append("\n4. Áp dụng luật bắc cầu:")
+                        result['steps'].append(f"   {', '.join(sorted(left_side))} → {', '.join(sorted(right_side))}")
+                        result['steps'].append(f"   {', '.join(sorted(right_side))} → {', '.join(sorted(fd2['right']))}")
+                        current_set.update(fd2['right'])
+                        result['steps'].append(f"   Kết quả: {', '.join(sorted(current_set))}")
+
+            # Kiểm tra xem có thêm thuộc tính mới không
+            if len(current_set) == initial_size:
+                break
+
+        # Kiểm tra kết quả cuối cùng
+        result['is_valid'] = target.issubset(current_set)
+        result['steps'].append("\nKết luận:")
+        if result['is_valid']:
+            result['steps'].append(f"   → Phụ thuộc hàm {fd_to_check} được suy diễn từ F")
+            result['steps'].append("   → Chứng minh thành công!")
         else:
-            missing_attrs = right_attrs - final_closure
-            result['steps'].append(f"\n3. Kết luận: Không thể suy diễn vì {', '.join(sorted(missing_attrs))} không thuộc bao đóng")
-            result['steps'].append("   => Phụ thuộc hàm này KHÔNG thể suy diễn từ tập F theo quy tắc Armstrong")
+            missing = target - current_set
+            result['steps'].append(f"   → Không thể suy diễn {', '.join(sorted(missing))}")
+            result['steps'].append("   → Chứng minh thất bại!")
 
     except Exception as e:
-        result['steps'].append(f"Lỗi xử lý: {str(e)}")
+        result['steps'].append(f"Lỗi: {str(e)}")
         result['is_valid'] = False
 
     return result

@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% block title %}Xác định dạng chuẩn{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-database me-3 fs-4"></i>
+                <h2 class="mb-0">Xác định dạng chuẩn</h2>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <!-- Form nhập liệu -->
+            <form id="normalizationForm" class="needs-validation" novalidate>
+                <!-- Tập thuộc tính -->
+                <div class="mb-4">
+                    <label for="attributes" class="form-label">
+                        <i class="fas fa-list me-2"></i>Tập thuộc tính
+                    </label>
+                    <input type="text" 
+                           class="form-control" 
+                           id="attributes" 
+                           placeholder="VD: A, B, C, D" 
+                           required>
+                    <div class="form-text">
+                        Nhập các thuộc tính, cách nhau bằng dấu phẩy
+                    </div>
+                    <div class="invalid-feedback">
+                        Vui lòng nhập tập thuộc tính
+                    </div>
+                </div>
+
+                <!-- Tập phụ thuộc hàm -->
+                <div class="mb-4">
+                    <label for="dependencies" class="form-label">
+                        <i class="fas fa-project-diagram me-2"></i>Tập phụ thuộc hàm
+                    </label>
+                    <textarea class="form-control" 
+                              id="dependencies" 
+                              rows="3" 
+                              placeholder="VD: A->B, B->C" 
+                              required></textarea>
+                    <div class="form-text">
+                        Nhập các phụ thuộc hàm, cách nhau bằng dấu phẩy
+                    </div>
+                    <div class="invalid-feedback">
+                        Vui lòng nhập tập phụ thuộc hàm
+                    </div>
+                </div>
+
+                <!-- Khóa chính -->
+                <div class="mb-4">
+                    <label for="primaryKeys" class="form-label">
+                        <i class="fas fa-key me-2"></i>Khóa chính
+                    </label>
+                    <input type="text" 
+                           class="form-control" 
+                           id="primaryKeys" 
+                           placeholder="VD: AB, CD (nếu có nhiều khóa)" 
+                           required>
+                    <div class="form-text">
+                        Nhập (các) khóa, nếu có nhiều khóa thì cách nhau bằng dấu phẩy
+                    </div>
+                    <div class="invalid-feedback">
+                        Vui lòng nhập khóa chính
+                    </div>
+                </div>
+
+                <!-- Nút điều khiển -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-check me-2"></i>Kiểm tra dạng chuẩn
+                    </button>
+                    <button type="button" id="btnExample" class="btn btn-outline-secondary">
+                        <i class="fas fa-lightbulb me-2"></i>Xem ví dụ
+                    </button>
+                    <button type="reset" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-2"></i>Xóa
+                    </button>
+                </div>
+            </form>
+
+            <!-- Kết quả -->
+            <div id="resultSection" class="mt-4 d-none">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clipboard-check me-2"></i>Kết quả phân tích
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Tóm tắt -->
+                        <div class="mb-4">
+                            <h6 class="text-primary">Lược đồ quan hệ:</h6>
+                            <div id="schemaInfo" class="alert alert-light border"></div>
+                        </div>
+
+                        <!-- Chi tiết từng dạng chuẩn -->
+                        <div id="normalFormDetails">
+                            <!-- 1NF -->
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-check-circle me-2"></i>Dạng chuẩn 1 (1NF)
+                                    </h6>
+                                    <span id="1NF-badge" class="badge"></span>
+                                </div>
+                                <div id="1NF-details" class="mt-2 ps-4 border-start"></div>
+                            </div>
+
+                            <!-- 2NF -->
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-check-circle me-2"></i>Dạng chuẩn 2 (2NF)
+                                    </h6>
+                                    <span id="2NF-badge" class="badge"></span>
+                                </div>
+                                <div id="2NF-details" class="mt-2 ps-4 border-start"></div>
+                            </div>
+
+                            <!-- 3NF -->
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-check-circle me-2"></i>Dạng chuẩn 3 (3NF)
+                                    </h6>
+                                    <span id="3NF-badge" class="badge"></span>
+                                </div>
+                                <div id="3NF-details" class="mt-2 ps-4 border-start"></div>
+                            </div>
+
+                            <!-- BCNF -->
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-check-circle me-2"></i>Dạng chuẩn Boyce-Codd (BCNF)
+                                    </h6>
+                                    <span id="BCNF-badge" class="badge"></span>
+                                </div>
+                                <div id="BCNF-details" class="mt-2 ps-4 border-start"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    const form = $('#normalizationForm');
+    const resultSection = $('#resultSection');
+
+    // Xử lý submit form
+    form.on('submit', function(e) {
+        e.preventDefault();
+        
+        if (!form[0].checkValidity()) {
+            form.addClass('was-validated');
+            return;
+        }
+
+        const attributes = $('#attributes').val().trim();
+        const dependencies = $('#dependencies').val().trim();
+        const primaryKeys = $('#primaryKeys').val().trim().split(',').map(k => k.trim());
+
+        // Hiển thị loading
+        resultSection.removeClass('d-none');
+        $('#schemaInfo').html(`
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Đang xử lý...</span>
+                </div>
+            </div>
+        `);
+
+        // Gọi API
+        $.ajax({
+            url: '/api/normalization',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                attributes: attributes,
+                dependencies: dependencies,
+                primary_keys: primaryKeys
+            }),
+            success: function(response) {
+                displayResults(response);
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON?.error || 'Đã xảy ra lỗi';
+                alert(error);
+                resultSection.addClass('d-none');
+            }
+        });
+    });
+
+    // Hiển thị kết quả
+    function displayResults(response) {
+        if (!response.success) {
+            alert(response.error || 'Đã xảy ra lỗi');
+            resultSection.addClass('d-none');
+            return;
+        }
+
+        // Hiển thị thông tin lược đồ
+        $('#schemaInfo').html(`
+            <div><strong>Tập thuộc tính:</strong> ${$('#attributes').val()}</div>
+            <div><strong>Phụ thuộc hàm:</strong> ${$('#dependencies').val()}</div>
+            <div><strong>Khóa chính:</strong> ${$('#primaryKeys').val()}</div>
+        `);
+
+        // Hiển thị kết quả từng dạng chuẩn
+        const forms = ['1NF', '2NF', '3NF', 'BCNF'];
+        forms.forEach(form => {
+            const result = response.normal_forms[form];
+            const badgeClass = result.valid ? 'bg-success' : 'bg-danger';
+            const badgeText = result.valid ? 'Đạt' : 'Không đạt';
+            
+            $(`#${form}-badge`).attr('class', `badge ${badgeClass}`).text(badgeText);
+            $(`#${form}-details`).html(result.explanation.replace(/\n/g, '<br>'));
+        });
+
+        resultSection.removeClass('d-none');
+    }
+
+    // Xử lý nút ví dụ
+    $('#btnExample').click(function() {
+        $('#attributes').val('A, B, C, D');
+        $('#dependencies').val('A->B, B->C, C->D');
+        $('#primaryKeys').val('A');
+    });
+});
+</script>
+
+<style>
+.border-start {
+    border-left: 3px solid #dee2e6!important;
+    padding-left: 1rem;
+}
+
+.badge {
+    font-size: 0.9em;
+    padding: 0.5em 1em;
+}
+</style>
+{% endblock %}

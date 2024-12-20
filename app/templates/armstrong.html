@@ -4,28 +4,76 @@
 {% block content %}
 <div class="container mt-5">
     <div class="card shadow-lg">
-        <div class="card-header bg-primary text-white d-flex align-items-center">
-            <i class="fas fa-project-diagram me-3 fs-4"></i>
-            <h2 class="mb-0">Chứng Minh Armstrong</h2>
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-project-diagram me-3 fs-4"></i>
+                <h2 class="mb-0">Chứng Minh Armstrong</h2>
+            </div>
         </div>
+
+        <!-- Phần lý thuyết Armstrong -->
+        <div class="card-body bg-light border-bottom">
+            <h5 class="text-primary mb-3">
+                <i class="fas fa-book me-2"></i>Hệ tiên đề Armstrong:
+            </h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title text-info">
+                                <i class="fas fa-1 me-2"></i>Luật phản xạ
+                            </h6>
+                            <p class="card-text">
+                                Nếu Y ⊆ X thì X → Y
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title text-info">
+                                <i class="fas fa-2 me-2"></i>Luật tăng trưởng
+                            </h6>
+                            <p class="card-text">
+                                Nếu Z ⊂ U và X → Y thì XZ → YZ
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title text-info">
+                                <i class="fas fa-3 me-2"></i>Luật bắc cầu
+                            </h6>
+                            <p class="card-text">
+                                Nếu X → Y và Y → Z thì X → Z
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form nhập liệu -->
         <div class="card-body">
             <form id="armstrongForm" class="needs-validation" novalidate>
                 <div class="row">
                     <!-- Tập phụ thuộc hàm -->
                     <div class="col-md-6 mb-3">
                         <label for="dependencies" class="form-label">
-                            <i class="fas fa-sitemap me-2"></i>Tập phụ thuộc hàm
+                            <i class="fas fa-sitemap me-2"></i>Tập phụ thuộc hàm F
                         </label>
                         <textarea 
                             class="form-control" 
                             id="dependencies" 
-                            name="dependencies" 
-                            rows="5" 
+                            rows="4" 
                             placeholder="VD: A->B, B->C"
                             required></textarea>
-                        <div class="form-text text-muted">
+                        <div class="form-text">
                             <i class="fas fa-info-circle me-2"></i>
-                            Nhập từng phụ thuộc hàm, cách nhau bằng dấu phẩy
+                            Mỗi phụ thuộc hàm có dạng X->Y, các phụ thuộc cách nhau bởi dấu phẩy
                         </div>
                     </div>
 
@@ -38,41 +86,52 @@
                             type="text" 
                             class="form-control" 
                             id="armstrong_rule" 
-                            name="armstrong_rule" 
                             placeholder="VD: A->C"
                             required>
-                        <div class="form-text text-muted">
+                        <div class="form-text">
                             <i class="fas fa-arrow-right me-2"></i>
-                            Nhập phụ thuộc hàm theo format X->Y
+                            Nhập phụ thuộc hàm cần chứng minh theo dạng X->Y
                         </div>
                     </div>
                 </div>
 
                 <!-- Nút điều khiển -->
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                    <div class="btn-group">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-calculator me-2"></i>Chứng minh
-                        </button>
-                        <button type="button" id="btnArmstrongExample" class="btn btn-outline-secondary">
-                            <i class="fas fa-lightbulb me-2"></i>Ví dụ
-                        </button>
-                        <button type="button" id="btnArmstrongClear" class="btn btn-outline-danger">
-                            <i class="fas fa-trash me-2"></i>Xóa
-                        </button>
-                    </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-calculator me-2"></i>Chứng minh
+                    </button>
+                    <button type="button" id="btnArmstrongExample" class="btn btn-outline-secondary">
+                        <i class="fas fa-lightbulb me-2"></i>Xem ví dụ
+                    </button>
+                    <button type="button" id="btnArmstrongClear" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-2"></i>Xóa
+                    </button>
                 </div>
             </form>
 
             <!-- Kết quả -->
             <div id="armstrongResult" class="mt-4 d-none">
                 <div class="card border-success">
-                    <div class="card-header bg-success text-white d-flex align-items-center">
-                        <i class="fas fa-clipboard-check me-2"></i>
-                        <h5 class="mb-0">Kết quả chứng minh</h5>
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clipboard-check me-2"></i>Kết quả chứng minh
+                        </h5>
                     </div>
-                    <div class="card-body" id="armstrongOutput">
-                        <!-- Kết quả sẽ được thêm vào đây bằng JavaScript -->
+                    <div class="card-body">
+                        <!-- Tóm tắt kết quả -->
+                        <div id="resultSummary" class="mb-4">
+                            <!-- Sẽ được điền bởi JavaScript -->
+                        </div>
+
+                        <!-- Chi tiết các bước -->
+                        <div class="proof-steps">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-list-ol me-2"></i>Các bước chứng minh:
+                            </h6>
+                            <div id="proofSteps" class="border rounded p-3 bg-light">
+                                <!-- Sẽ được điền bởi JavaScript -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -83,29 +142,36 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('armstrongForm');
-    const resultContainer = document.getElementById('armstrongResult');
-    const outputContainer = document.getElementById('armstrongOutput');
+$(document).ready(function() {
+    const form = $('#armstrongForm');
+    const resultContainer = $('#armstrongResult');
 
-    form.addEventListener('submit', function(event) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (!form.checkValidity()) {
-            form.classList.add('was-validated');
+    form.on('submit', function(e) {
+        e.preventDefault();
+        if (!form[0].checkValidity()) {
+            form.addClass('was-validated');
             return;
         }
 
         const dependencies = $('#dependencies').val().split(',').map(fd => {
             const [left, right] = fd.trim().split('->');
             return {
-                left: left.trim().split(','),
-                right: right.trim().split(',')
+                left: left.trim().split(''),  // Tách thành mảng ký tự
+                right: right.trim().split('') // Tách thành mảng ký tự
             };
         });
         
-        const armstrongRule = $('#armstrong_rule').val();
+        const armstrongRule = $('#armstrong_rule').val().trim();
+
+        // Hiển thị loading
+        resultContainer.removeClass('d-none');
+        $('#resultSummary').html(`
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Đang xử lý...</span>
+                </div>
+            </div>
+        `);
 
         $.ajax({
             url: '/armstrong',
@@ -116,82 +182,85 @@ document.addEventListener('DOMContentLoaded', function() {
                 armstrong_rule: armstrongRule
             }),
             success: function(response) {
-                resultContainer.classList.remove('d-none');
-                outputContainer.innerHTML = renderResult(response);
+                displayResult(response);
             },
             error: function(xhr) {
-                resultContainer.classList.remove('d-none');
-                outputContainer.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        ${xhr.responseText || 'Có lỗi xảy ra'}
-                    </div>
-                `;
+                const error = xhr.responseJSON?.error || 'Đã xảy ra lỗi không xác định';
+                displayError(error);
             }
         });
     });
 
-    function renderResult(response) {
-        let resultHtml = `
-            <div class="result-details">
-                <div class="alert ${response.is_valid ? 'alert-success' : 'alert-warning'}">
-                    <h5>
-                        <i class="fas ${response.is_valid ? 'fa-check-circle' : 'fa-times-circle'} me-2"></i>
-                        ${response.is_valid ? 'Chứng minh thành công' : 'Không thể chứng minh'}
-                    </h5>
-                </div>
-                <div class="steps-container mt-3">
-                    <h6>Các bước chứng minh:</h6>
-                    <ul class="list-group">
-        `;
-
-        response.steps.forEach(step => {
-            resultHtml += `<li class="list-group-item">${step}</li>`;
-        });
-
-        resultHtml += `
-                    </ul>
-                </div>
+    function displayResult(response) {
+        const isValid = response.is_valid;
+        
+        // Hiển thị tóm tắt
+        $('#resultSummary').html(`
+            <div class="alert ${isValid ? 'alert-success' : 'alert-danger'}">
+                <h5 class="alert-heading">
+                    <i class="fas ${isValid ? 'fa-check-circle' : 'fa-times-circle'} me-2"></i>
+                    ${isValid ? 'Chứng minh thành công!' : 'Không thể chứng minh!'}
+                </h5>
+                <p class="mb-0">
+                    ${isValid 
+                        ? 'Phụ thuộc hàm này có thể suy diễn từ F theo quy tắc Armstrong'
+                        : 'Không thể suy diễn phụ thuộc hàm này từ F theo quy tắc Armstrong'}
+                </p>
             </div>
-        `;
+        `);
 
-        return resultHtml;
+        // Hiển thị các bước
+        const stepsHtml = response.steps.map(step => {
+            if (step.startsWith('- ')) {
+                return `<div class="mb-2">${step.substring(2)}</div>`;
+            }
+            return `<div class="mb-2">${step}</div>`;
+        }).join('');
+
+        $('#proofSteps').html(stepsHtml);
+        resultContainer.removeClass('d-none');
+    }
+
+    function displayError(error) {
+        resultContainer.removeClass('d-none');
+        $('#resultSummary').html(`
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                ${error}
+            </div>
+        `);
+        $('#proofSteps').empty();
     }
 
     // Nút ví dụ
-    $('#btnArmstrongExample').on('click', function() {
+    $('#btnArmstrongExample').click(function() {
         $('#dependencies').val('A->B, B->C');
         $('#armstrong_rule').val('A->C');
     });
 
     // Nút xóa
-    $('#btnArmstrongClear').on('click', function() {
+    $('#btnArmstrongClear').click(function() {
         $('#dependencies').val('');
         $('#armstrong_rule').val('');
-        resultContainer.classList.add('d-none');
-        form.classList.remove('was-validated');
+        resultContainer.addClass('d-none');
+        form.removeClass('was-validated');
     });
 });
 </script>
-{% endblock %}
 
-{% block styles %}
 <style>
-.steps-container ul {
+.proof-steps {
     max-height: 400px;
     overflow-y: auto;
 }
 
-.result-details .alert {
-    margin-bottom: 15px;
-}
-
-.steps-container h6 {
-    margin-bottom: 10px;
-}
-
-#dependencies, #armstrong_rule {
+#proofSteps {
     font-family: monospace;
+    white-space: pre-wrap;
+}
+
+.card-title {
+    margin-bottom: 0.5rem;
 }
 </style>
 {% endblock %}

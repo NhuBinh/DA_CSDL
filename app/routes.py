@@ -76,33 +76,36 @@ def find_closure():  # Giữ tên route là 'closure' nhưng tên function là '
 @main.route('/armstrong', methods=['GET', 'POST'])
 def armstrong():
     """
-    Endpoint xử lý kiểm tra Armstrong rule từ yêu cầu POST
+    Endpoint xử lý chứng minh Armstrong
     """
     if request.method == 'POST':
         try:
-            # Nhận dữ liệu dưới dạng JSON
             data = request.get_json()
+            if not data:
+                return jsonify({"error": "Không có dữ liệu được gửi"}), 400
+
+            # Validate input
             dependencies = data.get('dependencies', [])
             rule_to_check = data.get('armstrong_rule', '').strip()
 
             if not dependencies or not rule_to_check:
-                return jsonify(error="Vui lòng nhập đầy đủ thông tin"), 400
+                return jsonify({
+                    "error": "Vui lòng nhập đầy đủ tập phụ thuộc hàm và phụ thuộc cần chứng minh"
+                }), 400
 
-            # Chuyển đổi dependencies sang dạng danh sách dict
-            fds = [
-                {
-                    'left': dep['left'],
-                    'right': dep['right']
-                }
-                for dep in dependencies
-            ]
+            # Chuẩn hóa dependencies
+            fds = [{
+                'left': [x.strip() for x in dep['left']],
+                'right': [x.strip() for x in dep['right']]
+            } for dep in dependencies]
 
+            # Thực hiện chứng minh
             result = check_armstrong(rule_to_check, fds)
 
             return jsonify(result)
 
         except Exception as e:
-            return jsonify(error=f"Lỗi: {str(e)}"), 500
+            return jsonify({"error": f"Lỗi xử lý: {str(e)}"}), 500
 
     return render_template('armstrong.html')
 
@@ -132,3 +135,39 @@ def format_closure_result(result):
     
     html += '</div>'
     return html
+
+@main.route('/normalization')
+def normalization_page():
+    return render_template('normalization.html')
+
+@main.route('/api/normalization', methods=['POST'])
+def check_normalization_api():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Dữ liệu không hợp lệ'}), 400
+            
+        attributes = data.get('attributes', '').strip()
+        dependencies = data.get('dependencies', '').strip()
+        primary_keys = data.get('primary_keys', [])
+        
+        if not attributes or not dependencies or not primary_keys:
+            return jsonify({
+                'error': 'Vui lòng nhập đầy đủ thông tin'
+            }), 400
+            
+        # Sử dụng hàm check_normal_forms từ module normalization
+        from .logic.normalization import check_normal_forms
+        result = check_normal_forms(attributes, dependencies, primary_keys)
+        
+        if not result['success']:
+            return jsonify({
+                'error': f"Lỗi xử lý: {result.get('error', 'Không xác định')}"
+            }), 400
+            
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Lỗi server: {str(e)}'
+        }), 500
