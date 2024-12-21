@@ -171,3 +171,37 @@ def check_normalization_api():
         return jsonify({
             'error': f'Lỗi server: {str(e)}'
         }), 500
+    
+@main.route('/minimal-cover')
+def minimal_cover_page():
+    return render_template('minimal_cover.html')
+
+@main.route('/api/minimal-cover', methods=['POST'])
+def find_minimal_cover_api():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Dữ liệu không hợp lệ'}), 400
+            
+        dependencies = data.get('dependencies', '').strip()
+        
+        if not dependencies:
+            return jsonify({
+                'error': 'Vui lòng nhập tập phụ thuộc hàm'
+            }), 400
+            
+        # Sử dụng hàm find_minimal_cover từ module minimal_cover
+        from .logic.minimal_cover import find_minimal_cover
+        result = find_minimal_cover(dependencies)
+        
+        if not result['success']:
+            return jsonify({
+                'error': f"Lỗi xử lý: {result.get('error', 'Không xác định')}"
+            }), 400
+            
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Lỗi server: {str(e)}'
+        }), 500

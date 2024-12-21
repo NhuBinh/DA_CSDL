@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% block title %}Tìm phủ tối thiểu{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-layer-group me-3 fs-4"></i>
+                <h2 class="mb-0">Tìm phủ tối thiểu</h2>
+            </div>
+        </div>
+
+        <!-- Phần lý thuyết -->
+        <div class="card-body bg-light border-bottom">
+            <h5 class="text-primary mb-3">
+                <i class="fas fa-book me-2"></i>Các bước tìm phủ tối thiểu:
+            </h5>
+            <ol class="list-group list-group-numbered mb-0">
+                <li class="list-group-item">
+                    Tách các phụ thuộc hàm sao cho vế phải chỉ còn một thuộc tính
+                    <small class="d-block text-muted">Ví dụ: A→BC thành A→B và A→C</small>
+                </li>
+                <li class="list-group-item">
+                    Bỏ các thuộc tính dư thừa ở vế trái
+                    <small class="d-block text-muted">Ví dụ: với AB→C, nếu A<sup>+</sup> chứa B thì B dư thừa</small>
+                </li>
+                <li class="list-group-item">
+                    Loại bỏ các phụ thuộc hàm dư thừa
+                    <small class="d-block text-muted">Kiểm tra từng phụ thuộc hàm có thể suy ra từ các phụ thuộc hàm còn lại</small>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Form nhập liệu -->
+        <div class="card-body">
+            <form id="minimalCoverForm" class="needs-validation" novalidate>
+                <div class="mb-4">
+                    <label for="dependencies" class="form-label">
+                        <i class="fas fa-project-diagram me-2"></i>Tập phụ thuộc hàm
+                    </label>
+                    <textarea class="form-control" 
+                             id="dependencies" 
+                             rows="3" 
+                             placeholder="VD: AB->CD, B->C, C->D" 
+                             required></textarea>
+                    <div class="form-text">
+                        Nhập các phụ thuộc hàm, cách nhau bằng dấu phẩy
+                    </div>
+                    <div class="invalid-feedback">
+                        Vui lòng nhập tập phụ thuộc hàm
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-calculator me-2"></i>Tìm phủ tối thiểu
+                    </button>
+                    <button type="button" id="btnExample" class="btn btn-outline-secondary">
+                        <i class="fas fa-lightbulb me-2"></i>Xem ví dụ
+                    </button>
+                    <button type="reset" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-2"></i>Xóa
+                    </button>
+                </div>
+            </form>
+
+            <!-- Kết quả -->
+            <div id="resultSection" class="mt-4 d-none">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clipboard-check me-2"></i>Kết quả
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Chi tiết các bước -->
+                        <div class="steps-section mb-4">
+                            <h6 class="text-primary mb-3">Các bước thực hiện:</h6>
+                            <div id="stepDetails" class="border rounded p-3 bg-light">
+                                <!-- Steps will be inserted here -->
+                            </div>
+                        </div>
+
+                        <!-- Kết quả cuối cùng -->
+                        <div class="final-result">
+                            <h6 class="text-success mb-3">
+                                <i class="fas fa-check-circle me-2"></i>Phủ tối thiểu:
+                            </h6>
+                            <div id="minimalCover" class="alert alert-success">
+                                <!-- Final result will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    const form = $('#minimalCoverForm');
+    const resultSection = $('#resultSection');
+
+    form.on('submit', function(e) {
+        e.preventDefault();
+        
+        if (!form[0].checkValidity()) {
+            form.addClass('was-validated');
+            return;
+        }
+
+        const dependencies = $('#dependencies').val().trim();
+
+        // Show loading
+        resultSection.removeClass('d-none');
+        $('#stepDetails').html(`
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Đang xử lý...</span>
+                </div>
+            </div>
+        `);
+
+        // Call API
+        $.ajax({
+            url: '/api/minimal-cover',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                dependencies: dependencies
+            }),
+            success: function(response) {
+                displayResults(response);
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON?.error || 'Đã xảy ra lỗi';
+                alert(error);
+                resultSection.addClass('d-none');
+            }
+        });
+    });
+
+    function displayResults(response) {
+        if (!response.success) {
+            alert(response.error || 'Đã xảy ra lỗi');
+            resultSection.addClass('d-none');
+            return;
+        }
+
+        // Display steps
+        const stepsHtml = response.steps.map(step => {
+            if (step.startsWith('\n')) {
+                return `<h6 class="text-primary mt-3">${step.substring(1)}</h6>`;
+            }
+            return `<div class="mb-1">${step}</div>`;
+        }).join('');
+        $('#stepDetails').html(stepsHtml);
+
+        // Display final result
+        const minimalCover = response.minimal_cover.join(', ');
+        $('#minimalCover').html(`F<sub>tt</sub> = {${minimalCover}}`);
+
+        resultSection.removeClass('d-none');
+    }
+
+    // Example button
+    $('#btnExample').click(function() {
+        $('#dependencies').val('A->BC, B->C, AB->D');
+    });
+});
+</script>
+
+<style>
+#stepDetails {
+    font-family: monospace;
+    white-space: pre-wrap;
+}
+
+.list-group-item small {
+    font-size: 0.85em;
+}
+</style>
+{% endblock %}
