@@ -50,24 +50,6 @@
                     </div>
                 </div>
 
-                <!-- Khóa chính -->
-                <div class="mb-4">
-                    <label for="primaryKeys" class="form-label">
-                        <i class="fas fa-key me-2"></i>Khóa chính
-                    </label>
-                    <input type="text" 
-                           class="form-control" 
-                           id="primaryKeys" 
-                           placeholder="VD: AB, CD (nếu có nhiều khóa)" 
-                           required>
-                    <div class="form-text">
-                        Nhập (các) khóa, nếu có nhiều khóa thì cách nhau bằng dấu phẩy
-                    </div>
-                    <div class="invalid-feedback">
-                        Vui lòng nhập khóa chính
-                    </div>
-                </div>
-
                 <!-- Nút điều khiển -->
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary">
@@ -95,6 +77,12 @@
                         <div class="mb-4">
                             <h6 class="text-primary">Lược đồ quan hệ:</h6>
                             <div id="schemaInfo" class="alert alert-light border"></div>
+                        </div>
+
+                        <!-- Thông tin về khóa -->
+                        <div class="mb-4">
+                            <h6 class="text-primary">Thông tin về khóa:</h6>
+                            <div id="keysInfo" class="alert alert-light border"></div>
                         </div>
 
                         <!-- Chi tiết từng dạng chuẩn -->
@@ -143,6 +131,41 @@
                                 <div id="BCNF-details" class="mt-2 ps-4 border-start"></div>
                             </div>
                         </div>
+
+                        <!-- Phần chuẩn hóa -->
+                        <div class="mt-4" id="normalizeSection" class="d-none">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-arrow-up me-2"></i>Chuẩn hóa dữ liệu
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <p class="mb-0"><strong>Dạng chuẩn hiện tại:</strong> <span id="currentNF"></span></p>
+                                        <div class="btn-group">
+                                            <button type="button" id="btn2NF" class="btn btn-outline-primary" onclick="normalizeSchema('2NF')">
+                                                <i class="fas fa-angle-double-up me-1"></i>Lên 2NF
+                                            </button>
+                                            <button type="button" id="btn3NF" class="btn btn-outline-primary" onclick="normalizeSchema('3NF')">
+                                                <i class="fas fa-angle-double-up me-1"></i>Lên 3NF
+                                            </button>
+                                            <button type="button" id="btnBCNF" class="btn btn-outline-primary" onclick="normalizeSchema('BCNF')">
+                                                <i class="fas fa-angle-double-up me-1"></i>Lên BCNF
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Kết quả chuẩn hóa -->
+                                    <div id="normalizationResult" class="d-none">
+                                        <h6 class="text-primary mb-3">Các lược đồ quan hệ sau khi chuẩn hóa:</h6>
+                                        <div id="normalizedRelations" class="list-group">
+                                            <!-- Relations will be inserted here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -168,7 +191,6 @@ $(document).ready(function() {
 
         const attributes = $('#attributes').val().trim();
         const dependencies = $('#dependencies').val().trim();
-        const primaryKeys = $('#primaryKeys').val().trim().split(',').map(k => k.trim());
 
         // Hiển thị loading
         resultSection.removeClass('d-none');
@@ -187,12 +209,9 @@ $(document).ready(function() {
             contentType: 'application/json',
             data: JSON.stringify({
                 attributes: attributes,
-                dependencies: dependencies,
-                primary_keys: primaryKeys
+                dependencies: dependencies
             }),
-            success: function(response) {
-                displayResults(response);
-            },
+            success: displayResults,
             error: function(xhr) {
                 const error = xhr.responseJSON?.error || 'Đã xảy ra lỗi';
                 alert(error);
@@ -201,42 +220,143 @@ $(document).ready(function() {
         });
     });
 
-    // Hiển thị kết quả
-    function displayResults(response) {
-        if (!response.success) {
-            alert(response.error || 'Đã xảy ra lỗi');
-            resultSection.addClass('d-none');
-            return;
-        }
-
-        // Hiển thị thông tin lược đồ
-        $('#schemaInfo').html(`
-            <div><strong>Tập thuộc tính:</strong> ${$('#attributes').val()}</div>
-            <div><strong>Phụ thuộc hàm:</strong> ${$('#dependencies').val()}</div>
-            <div><strong>Khóa chính:</strong> ${$('#primaryKeys').val()}</div>
-        `);
-
-        // Hiển thị kết quả từng dạng chuẩn
-        const forms = ['1NF', '2NF', '3NF', 'BCNF'];
-        forms.forEach(form => {
-            const result = response.normal_forms[form];
-            const badgeClass = result.valid ? 'bg-success' : 'bg-danger';
-            const badgeText = result.valid ? 'Đạt' : 'Không đạt';
-            
-            $(`#${form}-badge`).attr('class', `badge ${badgeClass}`).text(badgeText);
-            $(`#${form}-details`).html(result.explanation.replace(/\n/g, '<br>'));
-        });
-
-        resultSection.removeClass('d-none');
-    }
-
     // Xử lý nút ví dụ
     $('#btnExample').click(function() {
         $('#attributes').val('A, B, C, D');
         $('#dependencies').val('A->B, B->C, C->D');
-        $('#primaryKeys').val('A');
     });
 });
+
+// Hàm xác định dạng chuẩn hiện tại
+function determineCurrentNF(response) {
+    const forms = ['BCNF', '3NF', '2NF', '1NF'];
+    for (const form of forms) {
+        if (response.normal_forms[form].valid) {
+            return form;
+        }
+    }
+    return '1NF';
+}
+
+// Hàm cập nhật trạng thái các nút chuẩn hóa
+function updateNormalizeButtons(currentNF) {
+    const nfOrder = ['1NF', '2NF', '3NF', 'BCNF'];
+    const currentIndex = nfOrder.indexOf(currentNF);
+    
+    $('#btn2NF').prop('disabled', currentIndex >= 1);
+    $('#btn3NF').prop('disabled', currentIndex >= 2);
+    $('#btnBCNF').prop('disabled', currentIndex >= 3);
+}
+
+// Hàm thực hiện chuẩn hóa
+function normalizeSchema(targetNF) {
+    const attributes = $('#attributes').val().trim();
+    const dependencies = $('#dependencies').val().trim();
+
+    $('#normalizationResult').removeClass('d-none');
+    $('#normalizedRelations').html(`
+        <div class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Đang xử lý...</span>
+            </div>
+        </div>
+    `);
+
+    $.ajax({
+        url: '/api/normalize',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            attributes: attributes,
+            dependencies: dependencies,
+            target_nf: targetNF
+        }),
+        success: function(response) {
+            if (!response.success) {
+                alert(response.error || 'Đã xảy ra lỗi');
+                $('#normalizationResult').addClass('d-none');
+                return;
+            }
+
+            let relationsHtml = '';
+            response.relations.forEach((relation, index) => {
+                relationsHtml += `
+                    <div class="list-group-item">
+                        <h6 class="mb-2 text-primary">${relation.name}</h6>
+                        <p class="mb-1">
+                            <i class="fas fa-database me-2"></i>
+                            <strong>Tập thuộc tính:</strong> 
+                            ${Array.from(relation.attributes).sort().join(', ')}
+                        </p>
+                        <p class="mb-1">
+                            <i class="fas fa-key me-2"></i>
+                            <strong>Khóa chính:</strong> 
+                            ${Array.from(relation.primary_key).sort().join(', ')}
+                        </p>
+                        <p class="mb-0">
+                            <i class="fas fa-project-diagram me-2"></i>
+                            <strong>Phụ thuộc hàm:</strong> 
+                            ${relation.fds.map(fd =>
+                                `${Array.from(fd.left).sort().join(',')} → ${Array.from(fd.right).sort().join(',')}`
+                            ).join(', ')}
+                        </p>
+                    </div>
+                `;
+            });
+
+            $('#normalizedRelations').html(relationsHtml);
+            $('#normalizationResult').removeClass('d-none');
+            updateNormalizeButtons(response.current_nf);
+        },
+        error: function(xhr) {
+            alert(xhr.responseJSON?.error || 'Đã xảy ra lỗi');
+            $('#normalizationResult').addClass('d-none');
+        }
+    });
+}
+ // Hàm hiển thị kết quả
+function displayResults(response) {
+    if (!response.success) {
+        alert(response.error || 'Đã xảy ra lỗi');
+        $('#resultSection').addClass('d-none');
+        return;
+    }
+
+    // Hiển thị thông tin lược đồ
+    $('#schemaInfo').html(`
+        <div><strong>Tập thuộc tính:</strong> ${$('#attributes').val()}</div>
+        <div><strong>Phụ thuộc hàm:</strong> ${$('#dependencies').val()}</div>
+    `);
+
+    // Hiển thị thông tin về khóa
+    $('#keysInfo').html(`
+        <div><strong>Tập nguồn (TN):</strong> ${response.keys_info.TN}</div>
+        <div><strong>Tập trung gian (TG):</strong> ${response.keys_info.TG}</div>
+        <div><strong>Khóa chính:</strong> ${response.keys_info.primary_keys.join(', ')}</div>
+    `);
+
+    // Hiển thị kết quả từng dạng chuẩn
+    const forms = ['1NF', '2NF', '3NF', 'BCNF'];
+    forms.forEach(form => {
+        const result = response.normal_forms[form];
+        const badgeClass = result.valid ? 'bg-success' : 'bg-danger';
+        const badgeText = result.valid ? 'Đạt' : 'Không đạt';
+        
+        $(`#${form}-badge`).attr('class', `badge ${badgeClass}`).text(badgeText);
+        $(`#${form}-details`).html(result.explanation.replace(/\n/g, '<br>'));
+    });
+
+    // Xác định và hiển thị dạng chuẩn hiện tại
+    const currentNF = determineCurrentNF(response);
+    $('#currentNF').text(currentNF);
+    
+    // Hiển thị phần chuẩn hóa và cập nhật trạng thái các nút
+    $('#normalizeSection').removeClass('d-none');
+    updateNormalizeButtons(currentNF);
+
+    // Hiển thị kết quả
+    $('#resultSection').removeClass('d-none');
+}
 </script>
 
 <style>

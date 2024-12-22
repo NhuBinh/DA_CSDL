@@ -135,7 +135,6 @@ def format_closure_result(result):
     
     html += '</div>'
     return html
-
 @main.route('/normalization')
 def normalization_page():
     return render_template('normalization.html')
@@ -149,23 +148,98 @@ def check_normalization_api():
             
         attributes = data.get('attributes', '').strip()
         dependencies = data.get('dependencies', '').strip()
-        primary_keys = data.get('primary_keys', [])
         
-        if not attributes or not dependencies or not primary_keys:
+        if not attributes or not dependencies:
             return jsonify({
                 'error': 'Vui lòng nhập đầy đủ thông tin'
             }), 400
             
-        # Sử dụng hàm check_normal_forms từ module normalization
+        # Tìm khóa trước
+        from .logic.keys import process_keys
+        keys_result = process_keys(attributes, dependencies)
+        
+        if not keys_result['success']:
+            return jsonify({
+                'error': f"Lỗi xử lý khóa: {keys_result.get('error', 'Không xác định')}"
+            }), 400
+            
+        # Chuyển đổi kết quả khóa thành danh sách
+        primary_keys = []
+        if keys_result.get('skip_table', False):
+            primary_keys = [keys_result['keys'][0]]  # Chỉ có một khóa là TN
+        else:
+            table_data = keys_result['table_data']
+            primary_keys = [row['k'] for row in table_data if row['key'] == 'Yes']
+            
+        # Kiểm tra dạng chuẩn với các khóa đã tìm được
         from .logic.normalization import check_normal_forms
         result = check_normal_forms(attributes, dependencies, primary_keys)
         
         if not result['success']:
             return jsonify({
-                'error': f"Lỗi xử lý: {result.get('error', 'Không xác định')}"
+                'error': f"Lỗi xử lý dạng chuẩn: {result.get('error', 'Không xác định')}"
             }), 400
+        
+        # Bổ sung thông tin về khóa vào kết quả
+        result['keys_info'] = {
+            'TN': keys_result.get('TN', ''),
+            'TG': keys_result.get('TG', ''),
+            'primary_keys': primary_keys
+        }
             
         return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Lỗi server: {str(e)}'
+        }), 500
+@main.route('/api/normalize', methods=['POST'])
+def normalize_api():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Dữ liệu không hợp lệ'}), 400
+            
+        attributes = data.get('attributes', '').strip()
+        dependencies = data.get('dependencies', '').strip()
+        target_nf = data.get('target_nf')
+        
+        if not attributes or not dependencies or not target_nf:
+            return jsonify({
+                'error': 'Vui lòng nhập đầy đủ thông tin'
+            }), 400
+        
+        # Import hàm normalize từ module normalization    
+        from .logic.normalization import normalize_to_nf
+        result = normalize_to_nf(attributes, dependencies, target_nf)
+        
+        if not result['success']:
+            return jsonify({
+                'error': f"Lỗi xử lý: {result.get('error', 'Không xác định')}"
+            }), 400
+        
+        # Chuyển đổi set thành list trong kết quả
+        normalized_relations = []
+        for relation in result['relations']:
+            normalized_relation = {
+                'name': relation['name'],
+                'attributes': list(relation['attributes']),  # Chuyển set thành list
+                'primary_key': list(relation['primary_key']),  # Chuyển set thành list
+                'fds': [
+                    {
+                        'left': list(fd['left']),  # Chuyển set thành list
+                        'right': list(fd['right'])  # Chuyển set thành list
+                    }
+                    for fd in relation['fds']
+                ]
+            }
+            normalized_relations.append(normalized_relation)
+        
+        return jsonify({
+            'success': True,
+            'current_nf': result['current_nf'],
+            'relations': normalized_relations
+        })
         
     except Exception as e:
         return jsonify({
