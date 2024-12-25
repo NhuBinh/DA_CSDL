@@ -284,74 +284,54 @@ def decompose_2NF(primary_keys: List[Set[str]],
     relations.append(main_relation)
 
     return relations
-
-
 def decompose_3NF(primary_keys: List[Set[str]], 
-                  fds: List[Dict],
-                  attributes: Set[str]) -> List[Dict]:
-    """
-    Phân rã lược đồ sang dạng chuẩn 3NF theo quy trình chuẩn:
-    1. Kiểm tra tất cả các phụ thuộc hàm
-    2. Tách các phụ thuộc hàm vi phạm 3NF ra thành các lược đồ con
-    3. Giữ lại các phụ thuộc thỏa mãn 3NF
-    """
-    relations = []
-    
-    # Tạo tập thuộc tính của lược đồ quan hệ ban đầu
-    all_attributes = attributes.copy()
-    
-    # Bước 1: Kiểm tra các phụ thuộc hàm
-    for fd in fds:
-        left = frozenset(fd['left'])
-        right = frozenset(fd['right'])
-        
-        # Kiểm tra xem phụ thuộc hàm có vi phạm 3NF không
-        if not (left.issubset(primary_keys[0]) or right.issubset(primary_keys[0]) or 
-                right.issubset(all_attributes)):
-            # Bước 2: Tách ra thành lược đồ con
-            new_relation = {
-                'name': f'R_{len(relations) + 1}',
-                'attributes': left.union(right),
-                'primary_key': left,
-                'fds': [fd],
-                'explanation': f'Tách ra từ phụ thuộc hàm: {", ".join(sorted(left))} → {", ".join(sorted(right))}'
-            }
-            relations.append(new_relation)
-            # Cập nhật tập thuộc tính đã sử dụng
-            all_attributes -= right
-
-    # Bước 3: Giữ lại các phụ thuộc thỏa mãn 3NF
-    for fd in fds:
-        left = frozenset(fd['left'])
-        right = frozenset(fd['right'])
-        
-        # Nếu phụ thuộc thỏa mãn 3NF thì giữ lại
-        if left.issubset(primary_keys[0]) or right.issubset(primary_keys[0]) or \
-           (not left.issubset(primary_keys[0]) and right.issubset(all_attributes)):
-            # Kiểm tra xem quan hệ đã tồn tại chưa
-            if not any(rel['primary_key'] == left for rel in relations):
-                new_relation = {
-                    'name': f'R_{len(relations) + 1}',
-                    'attributes': left.union(right),
-                    'primary_key': left,
-                    'fds': [fd],
-                    'explanation': f'Giữ lại phụ thuộc hàm: {", ".join(sorted(left))} → {", ".join(sorted(right))}'
-                }
-                relations.append(new_relation)
-
-    # Đảm bảo khóa chính được bảo toàn
-    all_primary_keys = set().union(*[rel['primary_key'] for rel in relations])
-    if primary_keys[0] - all_primary_keys:
-        key_relation = {
-            'name': f'R_{len(relations) + 1}',
-            'attributes': primary_keys[0],
-            'primary_key': primary_keys[0],
-            'fds': [],
-            'explanation': 'Thêm để bảo toàn khóa chính'
-        }
-        relations.append(key_relation)
-
-    return relations
+                 fds: List[Dict],
+                 attributes: Set[str]) -> List[Dict]:
+   relations = []
+   used_attributes = set()
+   
+   # Gom nhóm FDs theo vế trái
+   fd_groups = defaultdict(list)
+   for fd in fds:
+       left = frozenset(fd['left'])
+       fd_groups[left].append(fd)
+   
+   # Xử lý từng nhóm FDs
+   for left, group_fds in fd_groups.items():
+       right = set().union(*[set(fd['right']) for fd in group_fds])
+       
+       # Kiểm tra relation đã tồn tại
+       is_duplicate = any(
+           rel['attributes'] == set(left).union(right) and
+           rel['primary_key'] == set(left)
+           for rel in relations
+       )
+       
+       if not is_duplicate:
+           new_fds = [fd for fd in group_fds 
+                     if fd['left'].issubset(left) and fd['right'].issubset(right)]
+           
+           new_relation = {
+               'name': f'R_{len(relations) + 1}',
+               'attributes': set(left).union(right),
+               'primary_key': set(left),
+               'fds': new_fds
+           }
+           relations.append(new_relation)
+           used_attributes.update(right)
+   
+   # Xử lý thuộc tính còn lại nếu cần
+   remaining = attributes - used_attributes
+   if remaining and not any(rel['attributes'].issuperset(primary_keys[0]) for rel in relations):
+       key_relation = {
+           'name': f'R_{len(relations) + 1}',
+           'attributes': set(primary_keys[0]).union(remaining),
+           'primary_key': set(primary_keys[0]),
+           'fds': [fd for fd in fds if fd['left'].issubset(primary_keys[0])]
+       }
+       relations.append(key_relation)
+   
+   return relations
 
 def decompose_BCNF(primary_keys: List[Set[str]], 
                    fds: List[Dict],
