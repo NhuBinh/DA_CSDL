@@ -1,4 +1,6 @@
-from typing import Set, List, Dict, Tuple
+
+from collections import defaultdict
+from typing import Optional, Set, List, Dict, Tuple
 
 def is_in_1NF(attributes: Set[str], primary_keys: List[Set[str]]) -> Tuple[bool, str]:
     """
@@ -17,35 +19,64 @@ def is_in_1NF(attributes: Set[str], primary_keys: List[Set[str]]) -> Tuple[bool,
         is_valid = False
         explanation += "- KHÔNG thỏa mãn: Chưa xác định được khóa chính\n"
     else:
-        explanation += f"- Có khóa chính: {', '.join([', '.join(sorted(k)) for k in primary_keys])}\n"
+        explanation += f"- Có khóa chính: {','.join([','.join(sorted(k)) for k in primary_keys])}\n"
     
     return is_valid, explanation
-
 def find_partial_dependencies(primary_keys: List[Set[str]], 
                             fds: List[Dict]) -> List[Tuple[Set[str], Set[str]]]:
     """
-    Tìm các phụ thuộc bộ phận (một phần của khóa -> thuộc tính không khóa)
+    Tìm các phụ thuộc bộ phận:
+    - Phụ thuộc bộ phận là phụ thuộc từ một phần của khóa
     """
     partial_deps = []
-    non_prime_attributes = set()
     
     # Xác định các thuộc tính không khóa
     all_attributes = set()
     for fd in fds:
         all_attributes.update(fd['left'], fd['right'])
     
-    for key in primary_keys:
-        for fd in fds:
-            left = set(fd['left'])
-            right = set(fd['right'])
-            
-            # Kiểm tra nếu vế trái là một phần của khóa
+    for fd in fds:
+        left = fd['left']
+        right = fd['right']
+        
+        # Kiểm tra phụ thuộc bộ phận
+        for key in primary_keys:
             if left.issubset(key) and left != key:
-                non_key_attrs = right - key
-                if non_key_attrs:
-                    partial_deps.append((left, non_key_attrs))
+                partial_deps.append((left, right))
+                break
+            
+            if not any(k.issubset(left) for k in primary_keys):
+                partial_deps.append((left, right))
+                break
     
     return partial_deps
+
+def is_in_2NF(primary_keys: List[Set[str]], 
+              fds: List[Dict]) -> Tuple[bool, str]:
+    """
+    Kiểm tra điều kiện dạng chuẩn 2 (2NF):
+    - Phải là 1NF
+    - Không có phụ thuộc bộ phận
+    """
+    is_1nf, explanation_1nf = is_in_1NF(set(), primary_keys)
+    if not is_1nf:
+        return False, "Không đạt 2NF vì không thỏa mãn 1NF"
+    
+    partial_deps = find_partial_dependencies(primary_keys, fds)
+    is_valid = len(partial_deps) == 0
+    
+    explanation = "Kiểm tra dạng chuẩn 2 (2NF):\n"
+    explanation += "1. Đã thỏa mãn 1NF\n"
+    
+    if partial_deps:
+        explanation += "2. Tồn tại các phụ thuộc bộ phận:\n"
+        for left, right in partial_deps:
+            explanation += f"   - {', '.join(sorted(left))} → {', '.join(sorted(right))}\n"
+            explanation += f"     (Vì {', '.join(sorted(left))} không phải là khóa hay một phần của khóa)\n"
+    else:
+        explanation += "2. Không tồn tại phụ thuộc bộ phận\n"
+    
+    return is_valid, explanation
 
 def find_transitive_dependencies(primary_keys: List[Set[str]], 
                                fds: List[Dict]) -> List[Tuple[Set[str], Set[str], Set[str]]]:
@@ -77,31 +108,6 @@ def find_transitive_dependencies(primary_keys: List[Set[str]],
     
     return transitive_deps
 
-def is_in_2NF(primary_keys: List[Set[str]], 
-              fds: List[Dict]) -> Tuple[bool, str]:
-    """
-    Kiểm tra điều kiện dạng chuẩn 2 (2NF):
-    - Phải là 1NF
-    - Không có phụ thuộc bộ phận
-    """
-    is_1nf, explanation_1nf = is_in_1NF(set(), primary_keys)
-    if not is_1nf:
-        return False, "Không đạt 2NF vì không thỏa mãn 1NF"
-    
-    partial_deps = find_partial_dependencies(primary_keys, fds)
-    is_valid = len(partial_deps) == 0
-    
-    explanation = "Kiểm tra dạng chuẩn 2 (2NF):\n"
-    explanation += "1. Đã thỏa mãn 1NF\n"
-    
-    if partial_deps:
-        explanation += "2. Tồn tại các phụ thuộc bộ phận:\n"
-        for left, right in partial_deps:
-            explanation += f"   - {', '.join(sorted(left))} → {', '.join(sorted(right))}\n"
-    else:
-        explanation += "2. Không tồn tại phụ thuộc bộ phận\n"
-    
-    return is_valid, explanation
 
 def is_in_3NF(primary_keys: List[Set[str]], 
               fds: List[Dict]) -> Tuple[bool, str]:
@@ -209,159 +215,288 @@ def decompose_2NF(primary_keys: List[Set[str]],
                   fds: List[Dict],
                   attributes: Set[str]) -> List[Dict]:
     """
-    Phân rã lược đồ sang dạng chuẩn 2
+    Phân rã lược đồ sang dạng chuẩn 2:
+    1. Tìm phụ thuộc bộ phận (vế trái không phải là siêu khóa)
+    2. Tạo quan hệ riêng cho phụ thuộc bộ phận
+    3. Tạo quan hệ chính với khóa và phụ thuộc không bộ phận
     """
     relations = []
-    processed_attrs = set()
     
-    # Tìm các phụ thuộc bộ phận
-    partial_deps = find_partial_dependencies(primary_keys, fds)
+    # Xác định thuộc tính không khóa
+    all_keys = set().union(*primary_keys)
     
-    if not partial_deps:
-        # Nếu không có phụ thuộc bộ phận, giữ nguyên lược đồ
-        relations.append({
-            'name': 'R',
-            'attributes': attributes,
-            'primary_key': primary_keys[0],
-            'fds': fds
-        })
-        return relations
+    # Tìm các phụ thuộc bộ phận và không bộ phận
+    partial_deps = []
+    non_partial_deps = []
+    
+    for fd in fds:
+        left = fd['left']
+        right = fd['right']
         
-    # Xử lý từng phụ thuộc bộ phận
-    for left, right in partial_deps:
-        # Tạo quan hệ mới cho phụ thuộc bộ phận
+        # Kiểm tra siêu khóa
+        is_partial = not any(key.issubset(left) and len(key) == len(left) for key in primary_keys)
+        
+        if is_partial:
+            partial_deps.append(fd)
+        else:
+            non_partial_deps.append(fd)
+
+    # Tạo quan hệ cho mỗi phụ thuộc bộ phận
+    for i, fd in enumerate(partial_deps):
         new_relation = {
-            'name': f'R_{len(relations) + 1}',
-            'attributes': left.union(right),
-            'primary_key': left,
-            'fds': [{'left': left, 'right': right}]
+            'name': f'R_{i+1}',
+            'attributes': fd['left'].union(fd['right']),
+            'primary_key': fd['left'],
+            'fds': [fd],
+            'explanation': f'Tạo từ phụ thuộc bộ phận: {", ".join(sorted(fd["left"]))} → {", ".join(sorted(fd["right"]))}'
         }
         relations.append(new_relation)
-        processed_attrs.update(right)
     
-    # Tạo quan hệ cho các thuộc tính còn lại
-    remaining_attrs = attributes - processed_attrs
-    if remaining_attrs:
-        main_relation = {
-            'name': 'R_main',
-            'attributes': remaining_attrs,
-            'primary_key': primary_keys[0],
-            'fds': [fd for fd in fds if not any(
-                fd['left'] == p_left and fd['right'] == p_right 
-                for p_left, p_right in partial_deps
-            )]
-        }
-        relations.append(main_relation)
+    # Tạo quan hệ chính
+    main_attrs = set()
+    main_fds = []
     
+    for fd in non_partial_deps:
+        main_attrs.update(fd['left'])
+        main_attrs.update(fd['right'])
+        main_fds.append(fd)
+    
+    # Xác định khóa chính cho quan hệ chính
+    main_key = set()
+    for primary_key in primary_keys:
+        if primary_key.issubset(main_attrs):
+            main_key = primary_key
+            break
+
+    # Loại bỏ các phụ thuộc hàm không phù hợp với khóa mới
+    final_main_fds = []
+    for fd in main_fds:
+        if fd['left'].issubset(main_key) or fd['left'] == main_key:
+            final_main_fds.append(fd)
+    
+    main_relation = {
+        'name': 'R_main',
+        'attributes': main_attrs,
+        'primary_key': main_key,
+        'fds': final_main_fds,
+        'explanation': 'Chứa khóa và các phụ thuộc không bộ phận'
+    }
+    relations.append(main_relation)
+
     return relations
+
 
 def decompose_3NF(primary_keys: List[Set[str]], 
                   fds: List[Dict],
                   attributes: Set[str]) -> List[Dict]:
     """
-    Phân rã lược đồ sang dạng chuẩn 3
+    Phân rã lược đồ sang dạng chuẩn 3NF theo quy trình chuẩn:
+    1. Kiểm tra tất cả các phụ thuộc hàm
+    2. Tách các phụ thuộc hàm vi phạm 3NF ra thành các lược đồ con
+    3. Giữ lại các phụ thuộc thỏa mãn 3NF
     """
     relations = []
-    processed_attrs = set()
     
-    # Tìm các phụ thuộc bắc cầu
-    transitive_deps = find_transitive_dependencies(primary_keys, fds)
+    # Tạo tập thuộc tính của lược đồ quan hệ ban đầu
+    all_attributes = attributes.copy()
     
-    if not transitive_deps:
-        # Nếu không có phụ thuộc bắc cầu, giữ nguyên lược đồ
-        relations.append({
-            'name': 'R',
-            'attributes': attributes,
-            'primary_key': primary_keys[0],
-            'fds': fds
-        })
-        return relations
-    
-    # Xử lý từng phụ thuộc bắc cầu
-    for key, middle, end in transitive_deps:
-        # Tạo quan hệ cho phụ thuộc Y -> Z
-        new_relation = {
+    # Bước 1: Kiểm tra các phụ thuộc hàm
+    for fd in fds:
+        left = frozenset(fd['left'])
+        right = frozenset(fd['right'])
+        
+        # Kiểm tra xem phụ thuộc hàm có vi phạm 3NF không
+        if not (left.issubset(primary_keys[0]) or right.issubset(primary_keys[0]) or 
+                right.issubset(all_attributes)):
+            # Bước 2: Tách ra thành lược đồ con
+            new_relation = {
+                'name': f'R_{len(relations) + 1}',
+                'attributes': left.union(right),
+                'primary_key': left,
+                'fds': [fd],
+                'explanation': f'Tách ra từ phụ thuộc hàm: {", ".join(sorted(left))} → {", ".join(sorted(right))}'
+            }
+            relations.append(new_relation)
+            # Cập nhật tập thuộc tính đã sử dụng
+            all_attributes -= right
+
+    # Bước 3: Giữ lại các phụ thuộc thỏa mãn 3NF
+    for fd in fds:
+        left = frozenset(fd['left'])
+        right = frozenset(fd['right'])
+        
+        # Nếu phụ thuộc thỏa mãn 3NF thì giữ lại
+        if left.issubset(primary_keys[0]) or right.issubset(primary_keys[0]) or \
+           (not left.issubset(primary_keys[0]) and right.issubset(all_attributes)):
+            # Kiểm tra xem quan hệ đã tồn tại chưa
+            if not any(rel['primary_key'] == left for rel in relations):
+                new_relation = {
+                    'name': f'R_{len(relations) + 1}',
+                    'attributes': left.union(right),
+                    'primary_key': left,
+                    'fds': [fd],
+                    'explanation': f'Giữ lại phụ thuộc hàm: {", ".join(sorted(left))} → {", ".join(sorted(right))}'
+                }
+                relations.append(new_relation)
+
+    # Đảm bảo khóa chính được bảo toàn
+    all_primary_keys = set().union(*[rel['primary_key'] for rel in relations])
+    if primary_keys[0] - all_primary_keys:
+        key_relation = {
             'name': f'R_{len(relations) + 1}',
-            'attributes': middle.union(end),
-            'primary_key': middle,
-            'fds': [{'left': middle, 'right': end}]
-        }
-        relations.append(new_relation)
-        processed_attrs.update(end)
-    
-    # Tạo quan hệ cho các thuộc tính còn lại
-    remaining_attrs = attributes - processed_attrs
-    if remaining_attrs:
-        main_relation = {
-            'name': 'R_main',
-            'attributes': remaining_attrs,
+            'attributes': primary_keys[0],
             'primary_key': primary_keys[0],
-            'fds': [fd for fd in fds if not any(
-                fd['left'] == t_middle and fd['right'] == t_end
-                for _, t_middle, t_end in transitive_deps
-            )]
+            'fds': [],
+            'explanation': 'Thêm để bảo toàn khóa chính'
         }
-        relations.append(main_relation)
-    
+        relations.append(key_relation)
+
     return relations
 
 def decompose_BCNF(primary_keys: List[Set[str]], 
                    fds: List[Dict],
                    attributes: Set[str]) -> List[Dict]:
     """
-    Phân rã lược đồ sang dạng BCNF
+    Phân rã lược đồ sang dạng BCNF:
+    1. Duyệt qua từng phụ thuộc hàm theo thứ tự
+    2. Tạo quan hệ riêng cho mỗi phụ thuộc hàm
+    3. Đảm bảo bảo toàn thông tin và không mất phụ thuộc
     """
-    relations = []
-    
-    # Tìm các phụ thuộc vi phạm BCNF
-    non_bcnf_deps = []
-    for fd in fds:
-        left = fd['left']
-        is_superkey = False
-        for key in primary_keys:
-            if key.issubset(left):
-                is_superkey = True
-                break
-        if not is_superkey:
-            non_bcnf_deps.append(fd)
-    
-    if not non_bcnf_deps:
-        # Nếu không có vi phạm BCNF, giữ nguyên lược đồ
-        relations.append({
+    # Kiểm tra nếu đã là BCNF
+    is_bcnf, _ = is_in_BCNF(primary_keys, fds)
+    if is_bcnf:
+        return [{
             'name': 'R',
             'attributes': attributes,
             'primary_key': primary_keys[0],
-            'fds': fds
-        })
-        return relations
+            'fds': fds,
+            'explanation': 'Lược đồ đã ở dạng BCNF'
+        }]
+
+    relations = []
     
-    # Phân rã theo từng phụ thuộc vi phạm BCNF
-    for fd in non_bcnf_deps:
+    # Phân rã theo từng phụ thuộc hàm theo thứ tự ban đầu
+    for i, fd in enumerate(fds):
         left = fd['left']
         right = fd['right']
         
-        # Tạo quan hệ mới
+        # Với mỗi phụ thuộc X->Y, tạo một quan hệ chứa X và Y
+        rel_attrs = left.union(right)
         new_relation = {
-            'name': f'R_{len(relations) + 1}',
-            'attributes': left.union(right),
-            'primary_key': left,
-            'fds': [{'left': left, 'right': right}]
+            'name': f'R_{i}',
+            'attributes': rel_attrs,
+            'primary_key': left,  # Vế trái là khóa chính
+            'fds': [fd],
+            'explanation': f'Tạo từ phụ thuộc hàm: {", ".join(sorted(left))} → {", ".join(sorted(right))}'
         }
         relations.append(new_relation)
-    
-    # Tạo quan hệ cho các thuộc tính còn lại
-    remaining_attrs = attributes - set().union(*[r['attributes'] for r in relations])
-    if remaining_attrs:
-        main_relation = {
-            'name': 'R_main',
-            'attributes': remaining_attrs,
-            'primary_key': primary_keys[0],
-            'fds': [fd for fd in fds if fd not in non_bcnf_deps]
-        }
-        relations.append(main_relation)
-    
-    return relations
 
+    # Loại bỏ các quan hệ trùng lặp (nếu có)
+    unique_relations = []
+    seen_attrs = set()
+    
+    for rel in relations:
+        rel_attrs_key = frozenset(rel['attributes'])
+        if rel_attrs_key not in seen_attrs:
+            unique_relations.append(rel)
+            seen_attrs.add(rel_attrs_key)
+
+    return unique_relations
+
+def compute_candidate_keys(attrs: Set[str], dependencies: List[Dict]) -> Set[Set[str]]:
+    """
+    Tính toán các khóa ứng viên cho một quan hệ
+    """
+    def is_superkey(attrs_subset: Set[str]) -> bool:
+        closure = compute_closure(attrs_subset, dependencies)
+        return attrs.issubset(closure)
+
+    def compute_closure(attrs_subset: Set[str], deps: List[Dict]) -> Set[str]:
+        closure = attrs_subset.copy()
+        changed = True
+        while changed:
+            changed = False
+            for fd in deps:
+                if fd['left'].issubset(closure) and not fd['right'].issubset(closure):
+                    closure.update(fd['right'])
+                    changed = True
+        return closure
+
+    # Tìm tập thuộc tính không xuất hiện ở vế phải của phụ thuộc hàm
+    rhs_attrs = set().union(*[fd['right'] for fd in dependencies])
+    lhs_only_attrs = set().union(*[fd['left'] for fd in dependencies]) - rhs_attrs
+
+    # Khởi tạo với tập thuộc tính không xuất hiện ở vế phải
+    candidate_keys = {frozenset(lhs_only_attrs)} if lhs_only_attrs else {frozenset()}
+
+    # Thêm các thuộc tính còn lại cho đến khi tìm được khóa
+    remaining_attrs = attrs - lhs_only_attrs
+    for attr in remaining_attrs:
+        new_keys = set()
+        for key in candidate_keys:
+            new_key = set(key).union({attr})
+            if is_superkey(new_key):
+                new_keys.add(frozenset(new_key))
+        if new_keys:
+            candidate_keys = new_keys
+
+    return {set(k) for k in candidate_keys}
+
+def get_minimal_cover(fds: List[Dict]) -> List[Dict]:
+    """
+    Tìm tập phụ thuộc hàm tối thiểu (minimal cover)
+    1. Chuẩn hóa vế phải
+    2. Loại bỏ thuộc tính dư thừa ở vế trái
+    3. Loại bỏ phụ thuộc hàm dư thừa
+    """
+    # Chuẩn hóa vế phải
+    normalized_fds = []
+    for fd in fds:
+        for attr in fd['right']:
+            normalized_fds.append({
+                'left': fd['left'].copy(),
+                'right': {attr}
+            })
+    
+    # Loại bỏ thuộc tính dư thừa ở vế trái
+    minimal_left_fds = []
+    for fd in normalized_fds:
+        minimal_left = fd['left'].copy()
+        for attr in fd['left']:
+            # Thử loại bỏ từng thuộc tính
+            test_left = minimal_left - {attr}
+            if test_left and is_dependent(test_left, fd['right'], normalized_fds):
+                minimal_left = test_left
+        minimal_left_fds.append({
+            'left': minimal_left,
+            'right': fd['right']
+        })
+    
+    # Loại bỏ phụ thuộc hàm dư thừa
+    result = []
+    for i, fd in enumerate(minimal_left_fds):
+        other_fds = minimal_left_fds[:i] + minimal_left_fds[i+1:]
+        if not is_dependent(fd['left'], fd['right'], other_fds):
+            result.append(fd)
+    
+    return result
+
+def is_dependent(left: Set[str], right: Set[str], fds: List[Dict]) -> bool:
+    """
+    Kiểm tra xem right có phụ thuộc hàm vào left không
+    sử dụng thuật toán tìm bao đóng
+    """
+    closure = left.copy()
+    changed = True
+    
+    while changed:
+        changed = False
+        for fd in fds:
+            if fd['left'].issubset(closure) and not fd['right'].issubset(closure):
+                closure.update(fd['right'])
+                changed = True
+    
+    return right.issubset(closure)
 
 def normalize_to_nf(attributes: str, dependencies: str, target_nf: str) -> Dict:
     """
@@ -408,29 +543,49 @@ def normalize_to_nf(attributes: str, dependencies: str, target_nf: str) -> Dict:
             current_nf = '2NF'
             
         # Thực hiện chuẩn hóa
-        relations = []
-        if target_nf == '2NF' and not is_2nf:
-            relations = decompose_2NF(primary_keys, fds, attrs)
-        elif target_nf == '3NF' and not is_3nf:
+        if target_nf == '2NF':
             if not is_2nf:
                 relations = decompose_2NF(primary_keys, fds, attrs)
-            relations.extend(decompose_3NF(primary_keys, fds, attrs))
-        elif target_nf == 'BCNF' and not is_bcnf:
-            if not is_2nf:
-                relations = decompose_2NF(primary_keys, fds, attrs)
+            else:
+                relations = [{
+                    'name': 'R',
+                    'attributes': attrs,
+                    'primary_key': primary_keys[0],
+                    'fds': fds,
+                    'explanation': 'Lược đồ đã ở dạng chuẩn 2NF'
+                }]
+        elif target_nf == '3NF':
             if not is_3nf:
-                relations.extend(decompose_3NF(primary_keys, fds, attrs))
-            relations.extend(decompose_BCNF(primary_keys, fds, attrs))
+                relations = decompose_3NF(primary_keys, fds, attrs)
+            else:
+                relations = [{
+                    'name': 'R',
+                    'attributes': attrs,
+                    'primary_key': primary_keys[0],
+                    'fds': fds,
+                    'explanation': 'Lược đồ đã ở dạng chuẩn 3NF'
+                }]
+        elif target_nf == 'BCNF':
+            if not is_bcnf:
+                relations = decompose_BCNF(primary_keys, fds, attrs)
+            else:
+                relations = [{
+                    'name': 'R',
+                    'attributes': attrs,
+                    'primary_key': primary_keys[0],
+                    'fds': fds,
+                    'explanation': 'Lược đồ đã ở dạng chuẩn BCNF'
+                }]
+        else:
+            return {
+                'success': False,
+                'error': 'Dạng chuẩn không hợp lệ'
+            }
             
         return {
             'success': True,
             'current_nf': current_nf,
-            'relations': relations or [{
-                'name': 'R',
-                'attributes': attrs,
-                'primary_key': primary_keys[0],
-                'fds': fds
-            }]
+            'relations': relations
         }
         
     except Exception as e:

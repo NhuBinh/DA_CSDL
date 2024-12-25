@@ -1,3 +1,4 @@
+
 {% extends 'base.html' %}
 {% block title %}Xác định dạng chuẩn{% endblock %}
 
@@ -223,7 +224,7 @@ $(document).ready(function() {
     // Xử lý nút ví dụ
     $('#btnExample').click(function() {
         $('#attributes').val('A, B, C, D');
-        $('#dependencies').val('A->B, B->C, C->D');
+        $('#dependencies').val('A->B, A->C, B->D');
     });
 });
 
@@ -249,11 +250,12 @@ function updateNormalizeButtons(currentNF) {
 }
 
 // Hàm thực hiện chuẩn hóa
+// Cập nhật hàm normalizeSchema
 function normalizeSchema(targetNF) {
     const attributes = $('#attributes').val().trim();
     const dependencies = $('#dependencies').val().trim();
 
-    $('#normalizationResult').removeClass('d-none');
+    // Hiển thị loading
     $('#normalizedRelations').html(`
         <div class="text-center py-3">
             <div class="spinner-border text-primary" role="status">
@@ -274,43 +276,82 @@ function normalizeSchema(targetNF) {
         success: function(response) {
             if (!response.success) {
                 alert(response.error || 'Đã xảy ra lỗi');
-                $('#normalizationResult').addClass('d-none');
+                $('#normalizedRelations').empty();  // Xóa loading spinner
                 return;
             }
 
+            // Xóa loading spinner và thêm kết quả mới
             let relationsHtml = '';
-            response.relations.forEach((relation, index) => {
+
+            if (response.message) {
                 relationsHtml += `
-                    <div class="list-group-item">
-                        <h6 class="mb-2 text-primary">${relation.name}</h6>
-                        <p class="mb-1">
-                            <i class="fas fa-database me-2"></i>
-                            <strong>Tập thuộc tính:</strong> 
-                            ${Array.from(relation.attributes).sort().join(', ')}
-                        </p>
-                        <p class="mb-1">
-                            <i class="fas fa-key me-2"></i>
-                            <strong>Khóa chính:</strong> 
-                            ${Array.from(relation.primary_key).sort().join(', ')}
-                        </p>
-                        <p class="mb-0">
-                            <i class="fas fa-project-diagram me-2"></i>
-                            <strong>Phụ thuộc hàm:</strong> 
-                            ${relation.fds.map(fd =>
-                                `${Array.from(fd.left).sort().join(',')} → ${Array.from(fd.right).sort().join(',')}`
-                            ).join(', ')}
-                        </p>
+                    <div class="alert alert-info mb-3">
+                        ${response.message}
                     </div>
                 `;
+            }
+            function formatFDs(fds) {
+                return fds.map(fd => {
+                    // Xử lý vế trái
+                    let left;
+                    if (Array.isArray(fd.left)) {
+                        left = fd.left.sort().join(',');
+                    } else if (typeof fd.left === 'object') {
+                        // Trường hợp fd.left là Set
+                        left = Array.from(fd.left).sort().join(',');
+                    } else {
+                        left = fd.left;
+                    }
+
+                    // Xử lý vế phải
+                    let right;
+                    if (Array.isArray(fd.right)) {
+                        right = fd.right.sort().join(',');
+                    } else if (typeof fd.right === 'object') {
+                        // Trường hợp fd.right là Set
+                        right = Array.from(fd.right).sort().join(',');
+                    } else {
+                        right = fd.right;
+                    }
+
+                    return `${left} → ${right}`;
+                }).join(', ');
+            }
+            response.relations.forEach((relation, index) => {
+                relationsHtml += `
+                <div class="list-group-item">
+                    <h6 class="mb-2 text-primary">${relation.name}</h6>
+                    ${relation.explanation ? 
+                        `<p class="mb-2 text-muted fst-italic">
+                            <i class="fas fa-info-circle me-2"></i>${relation.explanation}
+                        </p>` : ''
+                    }
+                    <p class="mb-1">
+                        <i class="fas fa-database me-2"></i>
+                        <strong>Tập thuộc tính:</strong> 
+                        ${relation.attributes.sort().join(', ')}
+                    </p>
+                    <p class="mb-1">
+                        <i class="fas fa-key me-2"></i>
+                        <strong>Khóa chính:</strong> 
+                        ${relation.primary_key.sort().join(', ')}
+                    </p>
+                    <p class="mb-0">
+                        <i class="fas fa-project-diagram me-2"></i>
+                        <strong>Phụ thuộc hàm:</strong> 
+                        ${formatFDs(relation.fds)}
+                    </p>
+                </div>
+            `;
             });
 
-            $('#normalizedRelations').html(relationsHtml);
+            $('#normalizedRelations').html(relationsHtml);  // Thay thế toàn bộ nội dung
             $('#normalizationResult').removeClass('d-none');
             updateNormalizeButtons(response.current_nf);
         },
         error: function(xhr) {
             alert(xhr.responseJSON?.error || 'Đã xảy ra lỗi');
-            $('#normalizationResult').addClass('d-none');
+            $('#normalizedRelations').empty();  // Xóa loading spinner
         }
     });
 }

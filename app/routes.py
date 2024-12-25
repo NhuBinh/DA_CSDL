@@ -1,3 +1,4 @@
+
 from flask import Blueprint, render_template, request, jsonify
 from .logic.keys import process_keys  # Chỉ import process_keys
 from .logic.closure import closure
@@ -279,3 +280,4 @@ def find_minimal_cover_api():
         return jsonify({
             'error': f'Lỗi server: {str(e)}'
         }), 500
+
