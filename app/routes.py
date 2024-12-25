@@ -1,5 +1,7 @@
 
 from flask import Blueprint, render_template, request, jsonify
+
+from app.logic.check_preservation import check_information_preservation
 from .logic.keys import process_keys  # Chỉ import process_keys
 from .logic.closure import closure
 from .logic.armstrong import check_armstrong
@@ -280,4 +282,31 @@ def find_minimal_cover_api():
         return jsonify({
             'error': f'Lỗi server: {str(e)}'
         }), 500
+
+@main.route('/info-preservation')
+def info_preservation():
+    return render_template('check_preservation.html')
+
+@main.route('/check-preservation', methods=['GET', 'POST']) 
+def check_preservation():
+    if request.method == 'GET':
+        return render_template('check_preservation.html')
+        
+    if request.json.get('example'):
+        return jsonify({
+            'attributes': 'ABCDGH',
+            'decomposition': 'ACGH,CD,ABC',
+            'dependencies': 'A->B,C->AD,AH->GC'
+        })
+
+    data = request.get_json()
+    attrs = list(data['attributes'].strip())
+    decomp = [list(r.strip()) for r in data['decomposition'].split(',')]
+    deps = []
+    for dep in data['dependencies'].split(','):
+        left, right = dep.strip().split('->')
+        deps.append((list(left.strip()), list(right.strip())))
+
+    steps_matrices = check_information_preservation(attrs, decomp, deps)
+    return jsonify(steps_matrices)
 

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Kiểm tra bảo toàn thông tin{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm mx-auto my-4" style="max-width: 1000px"> <!-- Tăng max-width -->
+    <div class="card-header gradient-header text-white py-3">
+        <h2 class="mb-0 text-start ps-3">
+            <i class="fas fa-shield-alt me-2"></i>
+            Kiểm tra bảo toàn thông tin
+        </h2>
+    </div>
+    <div class="card-body p-5"> <!-- Tăng padding -->
+        <form id="checkForm" class="needs-validation" novalidate>
+            <div class="mb-4">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="fas fa-database me-2 text-primary"></i>
+                    <h5 class="mb-0">Tập thuộc tính</h5>
+                </div>
+                <input type="text" class="form-control form-control-lg" id="attributes"placeholder="Ví dụ: ABCDGH" required>
+            </div>
+ 
+            <div class="mb-4">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="fas fa-project-diagram me-2 text-primary"></i>
+                    <h5 class="mb-0">Phân rã</h5>
+                </div>
+                <input type="text" class="form-control form-control-lg" id="decomposition"
+                    placeholder="Ví dụ: ABCD,CDH,AGH" required>
+                <div class="form-text text-muted">Các quan hệ cách nhau bởi dấu phẩy</div>
+            </div>
+ 
+            <div class="mb-4">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="fas fa-arrows-alt-h me-2 text-primary"></i>
+                    <h5 class="mb-0">Phụ thuộc hàm</h5>
+                </div>
+                <input type="text" class="form-control form-control-lg" id="dependencies"
+                    placeholder="Ví dụ: A->B,C->AD,AB->C" required>
+                <div class="form-text text-muted">Cách nhau bởi dấu phẩy</div>
+            </div>
+ 
+            <div class="text-center mt-5"> <!-- Tăng margin -->
+                <button type="submit" class="btn btn-primary btn-lg px-5 me-3"> <!-- Tăng size button -->
+                    <i class="fas fa-check me-2"></i>Kiểm tra
+                </button>
+                <button type="button" id="exampleBtn" class="btn btn-outline-secondary btn-lg px-5">
+                    <i class="fas fa-lightbulb me-2"></i>Xem ví dụ
+                </button>
+            </div>
+        </form>
+ 
+        <div id="result" class="mt-5" style="display:none;">
+            <h4 class="text-center mb-4">Kết quả kiểm tra</h4>
+            <div id="steps" class="mx-3"></div> <!-- Thêm margin -->
+            <div id="matrices" class="mx-3"></div>
+        </div>
+    </div>
+ </div>
+ 
+ <style>
+ .card {
+    border: none;
+ }
+ 
+ .gradient-header {
+    background: linear-gradient(90deg, #4a90e2, #67b26f);
+ }
+ 
+ .form-control {
+    padding: 0.8rem;
+    border-radius: 6px;
+ }
+ 
+ .matrix-container {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+ }
+ 
+ .step-header {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #2c3e50;
+    margin: 1.5rem 0 1rem;
+ }
+ </style>
+
+<script>
+document.getElementById('exampleBtn').onclick = async () => {
+    const response = await fetch('/check-preservation', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({example: true})
+    });
+    const data = await response.json();
+    document.getElementById('attributes').value = data.attributes;
+    document.getElementById('decomposition').value = data.decomposition;
+    document.getElementById('dependencies').value = data.dependencies;
+};
+
+document.getElementById('checkForm').onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+        const response = await fetch('/check-preservation', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                attributes: document.getElementById('attributes').value,
+                decomposition: document.getElementById('decomposition').value,
+                dependencies: document.getElementById('dependencies').value
+            })
+        });
+        
+        const data = await response.json();
+        displayResults(data);
+    } catch (error) {
+        alert('Có lỗi xảy ra: ' + error);
+    }
+};
+function displayResults(data) {
+    const result = document.getElementById('result');
+    const steps = document.getElementById('steps');
+    
+    steps.innerHTML = '';
+    
+    data.forEach(item => {
+        // Add step text
+        const stepDiv = document.createElement('div');
+        stepDiv.className = 'mb-3';
+        stepDiv.innerHTML = item.step;
+        steps.appendChild(stepDiv);
+        
+        // Add matrix below step
+        const tableDiv = document.createElement('div'); 
+        tableDiv.className = 'mb-4';
+        tableDiv.appendChild(createMatrixTable(
+            item.matrix,
+            document.getElementById('attributes').value.split('')
+        ));
+        steps.appendChild(tableDiv);
+    });
+    
+    result.style.display = 'block';
+}
+
+function createMatrixTable(matrix, attributes) {
+    const table = document.createElement('table');
+    table.className = 'table table-bordered';
+    
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headerRow.innerHTML = '<th></th>' + 
+        attributes.map(attr => `<th class="text-center">${attr}</th>`).join('');
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    matrix.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<th>Q${i+1}</th>` + 
+            row.map(cell => `<td class="text-center">${cell}</td>`).join('');
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    
+    return table;
+}
+</script>
+{% endblock %}
