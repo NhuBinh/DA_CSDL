@@ -2,11 +2,10 @@
 {% block title %}Kiểm tra bảo toàn thông tin{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm mx-auto my-4" style="max-width: 1000px"> <!-- Tăng max-width -->
+<div class="card shadow-sm mx-auto my-4" style="max-width: 1000px">
     <div class="card-header gradient-header text-white py-3">
         <h2 class="mb-0 text-start ps-3">
-            <i class="fas fa-shield-alt me-2"></i>
-            Kiểm tra bảo toàn thông tin
+            <i class="fas fa-shield-alt me-2"></i>Kiểm tra bảo toàn thông tin
         </h2>
     </div>
     <div class="card-body p-5"> <!-- Tăng padding -->
@@ -58,34 +57,34 @@
  </div>
  
  <style>
- .card {
-    border: none;
- }
- 
- .gradient-header {
-    background: linear-gradient(90deg, #4a90e2, #67b26f);
- }
- 
- .form-control {
-    padding: 0.8rem;
-    border-radius: 6px;
- }
- 
- .matrix-container {
-    background: #fff;
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin: 1rem 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
- }
- 
- .step-header {
-    font-size: 1.1rem;
-    font-weight: 500;
-    color: #2c3e50;
-    margin: 1.5rem 0 1rem;
- }
- </style>
+    .changed-cell {
+        background-color: #ffebee;
+        color: #d32f2f;
+        font-weight: bold;
+    }
+    
+    .matrix-step {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.2rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .step-header {
+        font-size: 1.1rem;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+    
+    .no-change {
+        color: #666;
+        font-style: italic;
+        margin: 1rem 0;
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+    </style>
 
 <script>
 document.getElementById('exampleBtn').onclick = async () => {
@@ -122,30 +121,40 @@ document.getElementById('checkForm').onsubmit = async (e) => {
 function displayResults(data) {
     const result = document.getElementById('result');
     const steps = document.getElementById('steps');
+    let prevMatrix = null;
     
     steps.innerHTML = '';
     
     data.forEach(item => {
-        // Add step text
         const stepDiv = document.createElement('div');
-        stepDiv.className = 'mb-3';
-        stepDiv.innerHTML = item.step;
-        steps.appendChild(stepDiv);
+        stepDiv.className = 'matrix-step';
         
-        // Add matrix below step
-        const tableDiv = document.createElement('div'); 
-        tableDiv.className = 'mb-4';
-        tableDiv.appendChild(createMatrixTable(
-            item.matrix,
-            document.getElementById('attributes').value.split('')
-        ));
-        steps.appendChild(tableDiv);
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'step-header';
+        headerDiv.innerHTML = item.step;
+        stepDiv.appendChild(headerDiv);
+        
+        if (item.matrix === null) {
+            const noChangeDiv = document.createElement('div');
+            noChangeDiv.className = 'no-change';
+            noChangeDiv.innerHTML = '<i class="fas fa-info-circle me-2"></i>Ma trận không thay đổi';
+            stepDiv.appendChild(noChangeDiv);
+        } else {
+            stepDiv.appendChild(createMatrixTable(
+                item.matrix,
+                document.getElementById('attributes').value.split(''),
+                prevMatrix
+            ));
+            prevMatrix = item.matrix;
+        }
+        
+        steps.appendChild(stepDiv);
     });
     
     result.style.display = 'block';
 }
 
-function createMatrixTable(matrix, attributes) {
+function createMatrixTable(matrix, attributes, prevMatrix) {
     const table = document.createElement('table');
     table.className = 'table table-bordered';
     
@@ -160,7 +169,10 @@ function createMatrixTable(matrix, attributes) {
     matrix.forEach((row, i) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<th>Q${i+1}</th>` + 
-            row.map(cell => `<td class="text-center">${cell}</td>`).join('');
+            row.map((cell, j) => {
+                const changed = prevMatrix && prevMatrix[i][j] !== cell;
+                return `<td class="text-center ${changed ? 'changed-cell' : ''}">${cell}</td>`;
+            }).join('');
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);

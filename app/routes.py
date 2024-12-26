@@ -282,7 +282,6 @@ def find_minimal_cover_api():
 @main.route('/info-preservation')
 def info_preservation():
     return render_template('check_preservation.html')
-
 @main.route('/check-preservation', methods=['GET', 'POST']) 
 def check_preservation():
     if request.method == 'GET':
@@ -290,21 +289,29 @@ def check_preservation():
         
     if request.json.get('example'):
         return jsonify({
-            'attributes': 'ABCDGH',
-            'decomposition': 'ACGH,CD,ABC',
-            'dependencies': 'A->B,C->AD,AH->GC'
+            'attributes': 'ABCDEG',
+            'decomposition': 'DG,CA,CDE,AB',
+            'dependencies': 'D->G,C->A,CD->E,A->B'
         })
 
-    data = request.get_json()
-    attrs = list(data['attributes'].strip())
-    decomp = [list(r.strip()) for r in data['decomposition'].split(',')]
-    deps = []
-    for dep in data['dependencies'].split(','):
-        left, right = dep.strip().split('->')
-        deps.append((list(left.strip()), list(right.strip())))
+    try:
+        data = request.get_json()
+        if not all(key in data for key in ['attributes', 'decomposition', 'dependencies']):
+            return jsonify({'error': 'Thiếu thông tin đầu vào'}), 400
+            
+        attrs = list(data['attributes'].strip())
+        decomp = [list(r.strip()) for r in data['decomposition'].split(',')]
+        deps = []
+        
+        for dep in data['dependencies'].split(','):
+            left, right = dep.strip().split('->')
+            deps.append((list(left.strip()), list(right.strip())))
 
-    steps_matrices = check_information_preservation(attrs, decomp, deps)
-    return jsonify(steps_matrices)
+        steps_matrices = check_information_preservation(attrs, decomp, deps)
+        return jsonify(steps_matrices)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @main.route('/dependency_preservation', methods=['GET', 'POST'])
 def dependency_preservation():
