@@ -1,132 +1,133 @@
 from flask import jsonify, request, render_template
+from itertools import combinations
 
-def parse_dependencies(dependencies_str):
-    """
-    Phân tích chuỗi phụ thuộc hàm
-    """
-    dependencies = []
-    for line in dependencies_str.split('\n'):
-        line = line.strip()
-        if line:
-            try:
-                left, right = line.split('->')
-                left_attrs = set(attr.strip() for attr in left.split(','))
-                right_attrs = set(attr.strip() for attr in right.split(','))
-                dependencies.append({
-                    'left': left_attrs,
-                    'right': right_attrs
-                })
-            except ValueError:
-                raise ValueError(f"Định dạng phụ thuộc không hợp lệ: {line}")
-    return dependencies
+class FunctionalDependency:
+    def __init__(self, determinant, dependent):
+        self.determinant = frozenset(determinant)
+        self.dependent = frozenset(dependent)
+    
+    def __str__(self):
+        return f"{''.join(sorted(self.determinant))} → {''.join(sorted(self.dependent))}"
+    
+    def __eq__(self, other):
+        return (self.determinant == other.determinant and 
+                self.dependent == other.dependent)
+    
+    def __hash__(self):
+        return hash((self.determinant, self.dependent))
 
-def calculate_closure_with_steps(attributes, fds):
-    """
-    Tính bao đóng của tập thuộc tính với các bước chi tiết
-    """
-    closure = set(attributes)
-    steps = [f"- Ban đầu: {', '.join(sorted(closure))}"]
-    changed = True
-    step_count = 1
+def get_subsets(s, size=None):
+    s = set(s)
+    if size is None:
+        sizes = range(len(s) + 1)
+    else:
+        sizes = [size]
+    return {frozenset(combo) for n in sizes for combo in combinations(s, n)}
 
-    while changed:
-        changed = False
-        for fd in fds:
-            left = set(fd['left'])
-            right = set(fd['right'])
+def apply_reflexivity(attributes):
+    results = set()
+    for i in range(len(attributes) + 1):
+        for subset in get_subsets(attributes, i):
+            results.add((FunctionalDependency(attributes, subset), None))
+    return results
 
-            if left.issubset(closure) and not right.issubset(closure):
-                new_attrs = right - closure
-                closure.update(right)
-                changed = True
-                steps.append(f"- Bước {step_count}: Áp dụng {' '.join(fd['left'])}→{' '.join(fd['right'])}")
-                steps.append(f"  Thêm {', '.join(sorted(new_attrs))}")
-                steps.append(f"  Kết quả: {', '.join(sorted(closure))}")
-                step_count += 1
+def apply_augmentation(fd, all_attributes):
+    results = set()
+    for attrs in get_subsets(all_attributes, None):
+        new_det = fd.determinant.union(attrs)
+        new_dep = fd.dependent.union(attrs)
+        results.add((FunctionalDependency(new_det, new_dep), attrs))
+    return results
 
-    if step_count == 1:
-        steps.append("- Không có thuộc tính nào được thêm vào")
+def apply_transitivity(fd1, fd2):
+    if fd1.dependent.issuperset(fd2.determinant):
+        return {(FunctionalDependency(fd1.determinant, fd2.dependent), fd1.dependent)}
+    return set()
 
-    return {
-        'closure': closure,
-        'steps': steps
-    }
+def find_proof(given_fds, to_prove, attributes):
+    known_fds = set(given_fds)
+    derivation_history = {fd: [("Cho trước", fd, None)] for fd in given_fds}
+    
+    while True:
+        new_fds = set()
+        
+        for fd in known_fds:
+            for new_fd, _ in apply_reflexivity(fd.determinant):
+                if new_fd not in known_fds:
+                    new_fds.add(new_fd)
+                    derivation_history[new_fd] = derivation_history[fd] + [("Phản xạ", new_fd, None)]
+        
+            for new_fd, added_attrs in apply_augmentation(fd, attributes):
+                if new_fd not in known_fds:
+                    new_fds.add(new_fd)
+                    derivation_history[new_fd] = derivation_history[fd] + [
+                        ("Thêm vào", new_fd, f"Thuộc tính được thêm vào: {''.join(sorted(added_attrs))}")
+                    ]
+        
+        for fd1 in known_fds:
+            for fd2 in known_fds:
+                for new_fd, middle_set in apply_transitivity(fd1, fd2):
+                    if new_fd not in known_fds:
+                        new_fds.add(new_fd)
+                        derivation_history[new_fd] = derivation_history[fd1] + \
+                                                   derivation_history[fd2] + \
+                                                   [("Bắc cầu", new_fd, 
+                                                     f"Thuộc tính trung gian: {''.join(sorted(middle_set))}")]
+        
+        for fd in new_fds:
+            if fd.determinant == to_prove.determinant and \
+               fd.dependent == to_prove.dependent:
+                return derivation_history[fd]
+        
+        if not new_fds - known_fds:
+            return None
+        
+        known_fds.update(new_fds)
 
 def check_armstrong(fd_to_check, original_fds):
-    """
-    Kiểm tra và chứng minh áp dụng hệ tiên đề Armstrong
-    """
-    result = {
-        'is_valid': False,
-        'steps': []
-    }
-
     try:
-        # Phân tích phụ thuộc hàm cần chứng minh
+        # Parse input dependencies
+        given_fds = set()
+        for fd in original_fds:
+            given_fds.add(FunctionalDependency(fd['left'], fd['right']))
+        
+        # Parse target dependency
         left, right = fd_to_check.split('->')
-        X = set(attr.strip() for attr in left.split(','))
-        target = set(attr.strip() for attr in right.split(','))
+        to_prove = FunctionalDependency(left.strip(), right.strip())
 
-        result['steps'].append("1. Phân tích phụ thuộc hàm cần chứng minh:")
-        result['steps'].append(f"   X = {', '.join(sorted(X))} (vế trái)")
-        result['steps'].append(f"   Y = {', '.join(sorted(target))} (vế phải)")
+        # Get all attributes
+        attributes = set()
+        for fd in given_fds:
+            attributes.update(fd.determinant)
+            attributes.update(fd.dependent)
+        attributes.update(to_prove.determinant)
+        attributes.update(to_prove.dependent)
 
-        # Tập kết quả hiện tại (bao gồm X và các thuộc tính đã suy ra)
-        current_set = set(X)
-        applied_rules = []
+        # Find proof
+        proof = find_proof(given_fds, to_prove, attributes)
+        
+        result = {
+            'is_valid': proof is not None,
+            'steps': []
+        }
 
-        # Lặp cho đến khi không thể áp dụng thêm luật nào
-        while True:
-            initial_size = len(current_set)
-            
-            # Thử áp dụng từng phụ thuộc hàm
-            for fd in original_fds:
-                left_side = set(fd['left'])
-                right_side = set(fd['right'])
-
-                # 1. Luật phản xạ
-                if target.issubset(current_set):
-                    result['steps'].append("\n2. Áp dụng luật phản xạ:")
-                    result['steps'].append(f"   {', '.join(sorted(current_set))} → {', '.join(sorted(target))}")
-                    result['is_valid'] = True
-                    return result
-
-                # 2. Luật tăng trưởng
-                if left_side.issubset(current_set):
-                    new_attrs = right_side - current_set
-                    if new_attrs:
-                        current_set.update(right_side)
-                        result['steps'].append("\n3. Áp dụng luật tăng trưởng:")
-                        result['steps'].append(f"   {', '.join(sorted(left_side))} → {', '.join(sorted(right_side))}")
-                        result['steps'].append(f"   Thêm: {', '.join(sorted(new_attrs))}")
-                        result['steps'].append(f"   Kết quả: {', '.join(sorted(current_set))}")
-
-                # 3. Luật bắc cầu
-                for fd2 in original_fds:
-                    if right_side == set(fd2['left']) and set(fd2['right']) - current_set:
-                        result['steps'].append("\n4. Áp dụng luật bắc cầu:")
-                        result['steps'].append(f"   {', '.join(sorted(left_side))} → {', '.join(sorted(right_side))}")
-                        result['steps'].append(f"   {', '.join(sorted(right_side))} → {', '.join(sorted(fd2['right']))}")
-                        current_set.update(fd2['right'])
-                        result['steps'].append(f"   Kết quả: {', '.join(sorted(current_set))}")
-
-            # Kiểm tra xem có thêm thuộc tính mới không
-            if len(current_set) == initial_size:
-                break
-
-        # Kiểm tra kết quả cuối cùng
-        result['is_valid'] = target.issubset(current_set)
-        result['steps'].append("\nKết luận:")
-        if result['is_valid']:
-            result['steps'].append(f"   → Phụ thuộc hàm {fd_to_check} được suy diễn từ F")
-            result['steps'].append("   → Chứng minh thành công!")
+        if proof:
+            result['steps'].append("Các bước chứng minh:")
+            for i, (rule, fd, detail) in enumerate(proof, 1):
+                step = f"\nBước {i}:"
+                step += f"\nLuật áp dụng: {rule}"
+                step += f"\nKết quả: {fd}"
+                if detail:
+                    step += f"\n{detail}"
+                result['steps'].append(step)
+            result['steps'].append("\n→ Chứng minh thành công!")
         else:
-            missing = target - current_set
-            result['steps'].append(f"   → Không thể suy diễn {', '.join(sorted(missing))}")
-            result['steps'].append("   → Chứng minh thất bại!")
+            result['steps'].append("\n→ Không thể chứng minh được bằng hệ tiên đề Armstrong")
+
+        return result
 
     except Exception as e:
-        result['steps'].append(f"Lỗi: {str(e)}")
-        result['is_valid'] = False
-
-    return result
+        return {
+            'is_valid': False,
+            'steps': [f"Lỗi: {str(e)}"]
+        }

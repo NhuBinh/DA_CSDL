@@ -1,7 +1,9 @@
 
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, flash, redirect, render_template, request, jsonify
 
 from app.logic.check_preservation import check_information_preservation
+from app.logic.fd_analyzer import FunctionalDependency
+
 from .logic.keys import process_keys  # Chỉ import process_keys
 from .logic.closure import closure
 from .logic.armstrong import check_armstrong
@@ -76,35 +78,29 @@ def find_closure():  # Giữ tên route là 'closure' nhưng tên function là '
                                  error=f"Lỗi: {str(e)}")
             
     return render_template('closure.html')
+
 @main.route('/armstrong', methods=['GET', 'POST'])
 def armstrong():
-    """
-    Endpoint xử lý chứng minh Armstrong
-    """
     if request.method == 'POST':
         try:
             data = request.get_json()
             if not data:
                 return jsonify({"error": "Không có dữ liệu được gửi"}), 400
 
-            # Validate input
             dependencies = data.get('dependencies', [])
             rule_to_check = data.get('armstrong_rule', '').strip()
 
             if not dependencies or not rule_to_check:
                 return jsonify({
-                    "error": "Vui lòng nhập đầy đủ tập phụ thuộc hàm và phụ thuộc cần chứng minh"
+                    "error": "Vui lòng nhập đầy đủ thông tin"
                 }), 400
 
-            # Chuẩn hóa dependencies
             fds = [{
                 'left': [x.strip() for x in dep['left']],
                 'right': [x.strip() for x in dep['right']]
             } for dep in dependencies]
 
-            # Thực hiện chứng minh
             result = check_armstrong(rule_to_check, fds)
-
             return jsonify(result)
 
         except Exception as e:
@@ -309,4 +305,69 @@ def check_preservation():
 
     steps_matrices = check_information_preservation(attrs, decomp, deps)
     return jsonify(steps_matrices)
+
+@main.route('/dependency_preservation', methods=['GET', 'POST'])
+def dependency_preservation():
+    if request.method == 'POST':
+        try:
+            attributes = request.form.get('attributes', '').strip()
+            dependencies = request.form.get('dependencies', '').strip()
+            decomposition = request.form.get('decomposition', '').strip()
+
+            if not all([attributes, dependencies, decomposition]):
+                flash('Vui lòng điền đầy đủ thông tin', 'warning')
+                return redirect('/dependency_preservation')
+
+            # Process attributes
+            attr_list = set(attr.strip() for attr in attributes.split(','))
+
+            # Process dependencies
+            fd_list = []
+            for dep in dependencies.splitlines():
+                if not dep.strip():
+                    continue
+                try:
+                    left_str, right_str = dep.strip().split('->')
+                    left = [x.strip() for x in left_str.split(',')]
+                    right = right_str.strip()
+                    
+                    if not (set(left).issubset(attr_list) and right in attr_list):
+                        raise ValueError(f"Thuộc tính không tồn tại trong lược đồ: {dep}")
+                        
+                    fd_list.append(FunctionalDependency(left, right))
+                except Exception as e:
+                    flash(f'Lỗi phụ thuộc hàm không hợp lệ: {dep}', 'danger')
+                    return redirect('/dependency_preservation')
+
+            # Process decomposition
+            decomp_list = []
+            for dec in decomposition.splitlines():
+                if not dec.strip():
+                    continue
+                decomp_attrs = [x.strip() for x in dec.split(',')]
+                
+                if not set(decomp_attrs).issubset(attr_list):
+                    flash(f'Lược đồ con chứa thuộc tính không tồn tại: {dec}', 'danger')
+                    return redirect('/dependency_preservation')
+                    
+                decomp_list.append(decomp_attrs)
+
+            # Check preservation with detailed steps
+            is_preserved, message, steps = FunctionalDependency.check_preservation(fd_list, decomp_list)
+            
+            alert_type = 'success' if is_preserved else 'warning'
+            flash(message, alert_type)
+            
+            return render_template('dependency_preservation.html', 
+                                 attributes=attributes,
+                                 dependencies=dependencies,
+                                 decomposition=decomposition,
+                                 steps=steps)
+
+        except Exception as e:
+            flash(f'Lỗi xử lý: {str(e)}', 'danger')
+            return redirect('/dependency_preservation')
+
+    return render_template('dependency_preservation.html')
+
 

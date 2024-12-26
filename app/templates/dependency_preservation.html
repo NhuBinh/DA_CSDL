@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Bảo Toàn Phụ Thuộc Hàm{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card">
+        <div class="card-header">
+            <h4>Kiểm Tra Bảo Toàn Phụ Thuộc Hàm</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('main.dependency_preservation') }}" id="preservationForm">
+                <div class="mb-3">
+                    <label for="attributes" class="form-label">Tập thuộc tính (phân cách bằng dấu phẩy):</label>
+                    <input type="text" class="form-control" id="attributes" name="attributes" 
+                           value="{{ attributes or '' }}"
+                           placeholder="Ví dụ: A,B,C,D" required>
+                </div>
+                <div class="mb-3">
+                    <label for="dependencies" class="form-label">Phụ thuộc hàm (mỗi dòng một phụ thuộc):</label>
+                    <textarea class="form-control" id="dependencies" name="dependencies" rows="4" 
+                             placeholder="Ví dụ:&#10;A->B&#10;B,C->D" required>{{ dependencies or '' }}</textarea>
+                    <small class="text-muted">Format: X,Y->Z (với X,Y là vế trái và Z là vế phải)</small>
+                </div>
+                <div class="mb-3">
+                    <label for="decomposition" class="form-label">Lược đồ con (mỗi dòng một lược đồ):</label>
+                    <textarea class="form-control" id="decomposition" name="decomposition" rows="4" 
+                             placeholder="Ví dụ:&#10;A,B,C&#10;C,D" required>{{ decomposition or '' }}</textarea>
+                    <small class="text-muted">Phân cách các thuộc tính bằng dấu phẩy</small>
+                </div>
+                <button type="submit" class="btn btn-primary">Kiểm Tra</button>
+                <button type="button" class="btn btn-outline-primary" id="loadExample">
+                    <i class="fas fa-lightbulb me-2"></i>Xem Ví Dụ
+                </button>
+            </form>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} mt-3">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if steps %}
+            <div class="mt-4">
+                <h5>Chi tiết các bước kiểm tra:</h5>
+                <div class="border rounded p-3 bg-light">
+                    {% for step in steps %}
+                        <div class="{% if 'Bước' in step or 'Kết luận' in step or 'F - G' in step %}fw-bold mt-3{% endif %}">
+                            {{ step | replace('\n', '<br>') | safe }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('preservationForm').addEventListener('submit', function(e) {
+    const attributes = document.getElementById('attributes').value.trim();
+    const dependencies = document.getElementById('dependencies').value.trim();
+    const decomposition = document.getElementById('decomposition').value.trim();
+    
+    if (!attributes || !dependencies || !decomposition) {
+        e.preventDefault();
+        alert('Vui lòng điền đầy đủ thông tin');
+    }
+});
+
+document.getElementById('loadExample').addEventListener('click', function() {
+    document.getElementById('attributes').value = 'A,B,C,D';
+    document.getElementById('dependencies').value = 'A->B\nB->C\nC->D';
+    document.getElementById('decomposition').value = 'A,B\nB,C\nC,D';
+});
+</script>
+{% endblock %}
+
