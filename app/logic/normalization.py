@@ -26,7 +26,7 @@ def find_partial_dependencies(primary_keys: List[Set[str]],
                             fds: List[Dict]) -> List[Tuple[Set[str], Set[str]]]:
     """
     Tìm các phụ thuộc bộ phận:
-    - Phụ thuộc bộ phận là phụ thuộc từ một phần của khóa
+    - Phụ thuộc bộ phận xảy ra khi thuộc tính không khoá phụ thuộc vào một phần của khoá chính
     """
     partial_deps = []
     
@@ -35,17 +35,22 @@ def find_partial_dependencies(primary_keys: List[Set[str]],
     for fd in fds:
         all_attributes.update(fd['left'], fd['right'])
     
+    # Tìm các thuộc tính không khóa
+    non_prime_attributes = all_attributes - set.union(*primary_keys)
+    
     for fd in fds:
         left = fd['left']
         right = fd['right']
         
+        # Chỉ xét các FD có vế phải chứa thuộc tính không khóa
+        if not right.issubset(non_prime_attributes):
+            continue
+            
         # Kiểm tra phụ thuộc bộ phận
         for key in primary_keys:
+            # Nếu vế trái là tập con thực sự của khóa 
+            # và vế phải chứa thuộc tính không khóa
             if left.issubset(key) and left != key:
-                partial_deps.append((left, right))
-                break
-            
-            if not any(k.issubset(left) for k in primary_keys):
                 partial_deps.append((left, right))
                 break
     
@@ -55,8 +60,7 @@ def is_in_2NF(primary_keys: List[Set[str]],
               fds: List[Dict]) -> Tuple[bool, str]:
     """
     Kiểm tra điều kiện dạng chuẩn 2 (2NF):
-    - Phải là 1NF
-    - Không có phụ thuộc bộ phận
+    - Thuộc tính không khoá phụ thuộc đầy đủ vào khoá
     """
     is_1nf, explanation_1nf = is_in_1NF(set(), primary_keys)
     if not is_1nf:
@@ -69,69 +73,85 @@ def is_in_2NF(primary_keys: List[Set[str]],
     explanation += "1. Đã thỏa mãn 1NF\n"
     
     if partial_deps:
-        explanation += "2. Tồn tại các phụ thuộc bộ phận:\n"
+        explanation += "2. Tồn tại các phụ thuộc bộ phận (thuộc tính không khóa phụ thuộc vào một phần của khóa):\n"
         for left, right in partial_deps:
             explanation += f"   - {', '.join(sorted(left))} → {', '.join(sorted(right))}\n"
-            explanation += f"     (Vì {', '.join(sorted(left))} không phải là khóa hay một phần của khóa)\n"
+            explanation += f"     (Vì {', '.join(sorted(right))} là thuộc tính không khóa và phụ thuộc vào {', '.join(sorted(left))} - một phần của khóa)\n"
     else:
         explanation += "2. Không tồn tại phụ thuộc bộ phận\n"
     
     return is_valid, explanation
 
-def find_transitive_dependencies(primary_keys: List[Set[str]], 
-                               fds: List[Dict]) -> List[Tuple[Set[str], Set[str], Set[str]]]:
+def is_superkey(attrs: Set[str], primary_keys: List[Set[str]]) -> bool:
     """
-    Tìm các phụ thuộc bắc cầu (X -> Y -> Z, với X là khóa)
+    Kiểm tra xem một tập thuộc tính có phải là siêu khóa hay không
     """
-    transitive_deps = []
-    
-    # Xác định các thuộc tính không khóa
-    all_attributes = set()
-    for fd in fds:
-        all_attributes.update(fd['left'], fd['right'])
-    
-    non_prime_attributes = all_attributes - set.union(*primary_keys)
-    
-    for fd1 in fds:
-        left1 = set(fd1['left'])
-        right1 = set(fd1['right'])
-        
-        for fd2 in fds:
-            left2 = set(fd2['left'])
-            right2 = set(fd2['right'])
-            
-            # Kiểm tra phụ thuộc bắc cầu
-            if (right1 == left2 and 
-                left1 in primary_keys and 
-                right2.issubset(non_prime_attributes)):
-                transitive_deps.append((left1, right1, right2))
-    
-    return transitive_deps
+    return any(key.issubset(attrs) for key in primary_keys)
 
+def is_prime_attribute(attr: str, primary_keys: List[Set[str]]) -> bool:
+    """
+    Kiểm tra xem một thuộc tính có phải là thuộc tính nguyên tố hay không
+    (thuộc tính nằm trong ít nhất một khóa)
+    """
+    return any(attr in key for key in primary_keys)
+
+def check_3nf_violation(fd: Dict, primary_keys: List[Set[str]]) -> Tuple[bool, str]:
+    """
+    Kiểm tra vi phạm 3NF cho một phụ thuộc hàm.
+    Trả về (is_violated, explanation)
+    """
+    left = fd['left']
+    right = fd['right']
+    
+    # Điều kiện 1: X là siêu khóa
+    if is_superkey(left, primary_keys):
+        return False, "Vế trái là siêu khóa"
+        
+    # Điều kiện 2: Y là thuộc tính nguyên tố
+    all_prime = all(is_prime_attribute(attr, primary_keys) for attr in right)
+    if all_prime:
+        return False, "Vế phải chứa thuộc tính khoá"
+        
+    # Vi phạm cả hai điều kiện
+    return True, "Vi phạm 3NF: Vế trái không phải siêu khóa và vế phải không chứa thuộc tính của khoá"
 
 def is_in_3NF(primary_keys: List[Set[str]], 
               fds: List[Dict]) -> Tuple[bool, str]:
     """
     Kiểm tra điều kiện dạng chuẩn 3 (3NF):
-    - Phải là 2NF
-    - Không có phụ thuộc bắc cầu
+    1. Phải là 2NF
+    2. Với mọi phụ thuộc hàm X→Y, ít nhất một trong các điều kiện sau đúng:
+       - X là siêu khóa
+       - Y là thuộc tính của khoá
     """
+    # Kiểm tra điều kiện 2NF trước
     is_2nf, explanation_2nf = is_in_2NF(primary_keys, fds)
     if not is_2nf:
         return False, "Không đạt 3NF vì không thỏa mãn 2NF"
     
-    transitive_deps = find_transitive_dependencies(primary_keys, fds)
-    is_valid = len(transitive_deps) == 0
+    # Kiểm tra các vi phạm 3NF
+    violations = []
+    for fd in fds:
+        is_violated, reason = check_3nf_violation(fd, primary_keys)
+        if is_violated:
+            violations.append((fd, reason))
     
+    is_valid = len(violations) == 0
+    
+    # Tạo giải thích chi tiết
     explanation = "Kiểm tra dạng chuẩn 3 (3NF):\n"
     explanation += "1. Đã thỏa mãn 2NF\n"
+    explanation += "2. Kiểm tra các phụ thuộc hàm X→Y:\n"
     
-    if transitive_deps:
-        explanation += "2. Tồn tại các phụ thuộc bắc cầu:\n"
-        for key, middle, end in transitive_deps:
-            explanation += f"   - {', '.join(sorted(key))} → {', '.join(sorted(middle))} → {', '.join(sorted(end))}\n"
+    if violations:
+        explanation += "   Tồn tại các phụ thuộc hàm vi phạm 3NF:\n"
+        for fd, reason in violations:
+            explanation += f"   - {', '.join(sorted(fd['left']))} → {', '.join(sorted(fd['right']))}\n"
+            explanation += f"     ({reason})\n"
     else:
-        explanation += "2. Không tồn tại phụ thuộc bắc cầu\n"
+        explanation += "   Mọi phụ thuộc hàm đều thỏa mãn ít nhất một trong hai điều kiện:\n"
+        explanation += "   - X là siêu khóa, hoặc\n"
+        explanation += "   - Y là thuộc của khoá\n"
     
     return is_valid, explanation
 

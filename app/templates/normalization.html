@@ -132,41 +132,6 @@
                                 <div id="BCNF-details" class="mt-2 ps-4 border-start"></div>
                             </div>
                         </div>
-
-                        <!-- Phần chuẩn hóa -->
-                        <div class="mt-4" id="normalizeSection" class="d-none">
-                            <div class="card">
-                                <div class="card-header bg-info text-white">
-                                    <h5 class="mb-0">
-                                        <i class="fas fa-arrow-up me-2"></i>Chuẩn hóa dữ liệu
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <p class="mb-0"><strong>Dạng chuẩn hiện tại:</strong> <span id="currentNF"></span></p>
-                                        <div class="btn-group">
-                                            <button type="button" id="btn2NF" class="btn btn-outline-primary" onclick="normalizeSchema('2NF')">
-                                                <i class="fas fa-angle-double-up me-1"></i>Lên 2NF
-                                            </button>
-                                            <button type="button" id="btn3NF" class="btn btn-outline-primary" onclick="normalizeSchema('3NF')">
-                                                <i class="fas fa-angle-double-up me-1"></i>Lên 3NF
-                                            </button>
-                                            <button type="button" id="btnBCNF" class="btn btn-outline-primary" onclick="normalizeSchema('BCNF')">
-                                                <i class="fas fa-angle-double-up me-1"></i>Lên BCNF
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Kết quả chuẩn hóa -->
-                                    <div id="normalizationResult" class="d-none">
-                                        <h6 class="text-primary mb-3">Các lược đồ quan hệ sau khi chuẩn hóa:</h6>
-                                        <div id="normalizedRelations" class="list-group">
-                                            <!-- Relations will be inserted here -->
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -371,9 +336,9 @@ function displayResults(response) {
 
     // Hiển thị thông tin về khóa
     $('#keysInfo').html(`
-        <div><strong>Tập nguồn (TN):</strong> ${response.keys_info.TN}</div>
-        <div><strong>Tập trung gian (TG):</strong> ${response.keys_info.TG}</div>
-        <div><strong>Khóa chính:</strong> ${response.keys_info.primary_keys.join(', ')}</div>
+        <div><strong>Tập nguồn (TN):</strong> {${response.keys_info.TN}}</div>
+        <div><strong>Tập trung gian (TG):</strong> {${response.keys_info.TG}}</div>
+        <div><strong>Khóa chính:</strong> ${response.keys_info.primary_keys.map(key => `{${key}}`).join(', ')}</div>
     `);
 
     // Hiển thị kết quả từng dạng chuẩn
