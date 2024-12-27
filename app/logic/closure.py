@@ -28,7 +28,7 @@ def closure(attributes, dependencies):
 
         # Xử lý input dependencies
         deps = []
-        for dep in dependencies.split(';'):
+        for dep in dependencies.split(','):
             if '->' not in dep:
                 continue
             lhs, rhs = dep.split('->')
