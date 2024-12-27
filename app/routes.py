@@ -137,7 +137,6 @@ def format_closure_result(result):
 @main.route('/normalization')
 def normalization_page():
     return render_template('normalization.html')
-
 @main.route('/api/normalization', methods=['POST'])
 def check_normalization_api():
     try:
@@ -162,15 +161,22 @@ def check_normalization_api():
                 'error': f"Lỗi xử lý khóa: {keys_result.get('error', 'Không xác định')}"
             }), 400
             
-        # Chuyển đổi kết quả khóa thành danh sách
+        # Chuyển đổi kết quả khóa thành set
         primary_keys = []
         if keys_result.get('skip_table', False):
-            primary_keys = [keys_result['keys'][0]]  # Chỉ có một khóa là TN
+            # Chuyển đổi string key thành set
+            key_str = keys_result['keys'][0]
+            primary_keys = [set(k.strip() for k in key_str.split(','))]
         else:
+            # Chuyển đổi mỗi key string thành set
             table_data = keys_result['table_data']
-            primary_keys = [row['k'] for row in table_data if row['key'] == 'Yes']
+            primary_keys = [
+                set(k.strip() for k in row['k'].split(','))
+                for row in table_data 
+                if row['key'] == 'Yes'
+            ]
             
-        # Kiểm tra dạng chuẩn với các khóa đã tìm được
+        # Kiểm tra dạng chuẩn với các khóa đã chuyển đổi
         from .logic.normalization import check_normal_forms
         result = check_normal_forms(attributes, dependencies, primary_keys)
         
@@ -183,7 +189,7 @@ def check_normalization_api():
         result['keys_info'] = {
             'TN': keys_result.get('TN', ''),
             'TG': keys_result.get('TG', ''),
-            'primary_keys': primary_keys
+            'primary_keys': [','.join(sorted(k)) for k in primary_keys]
         }
             
         return jsonify(result)

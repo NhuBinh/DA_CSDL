@@ -154,7 +154,6 @@ def is_in_3NF(primary_keys: List[Set[str]],
         explanation += "   - Y là thuộc của khoá\n"
     
     return is_valid, explanation
-
 def is_in_BCNF(primary_keys: List[Set[str]], 
                fds: List[Dict]) -> Tuple[bool, str]:
     """
@@ -162,6 +161,8 @@ def is_in_BCNF(primary_keys: List[Set[str]],
     - Phải là 3NF
     - Vế trái của mọi phụ thuộc hàm phải là siêu khóa
     """
+    print("Primary keys:", primary_keys)  # Debug print
+    
     is_3nf, explanation_3nf = is_in_3NF(primary_keys, fds)
     if not is_3nf:
         return False, "Không đạt BCNF vì không thỏa mãn 3NF"
@@ -169,12 +170,15 @@ def is_in_BCNF(primary_keys: List[Set[str]],
     # Kiểm tra mọi phụ thuộc hàm
     non_bcnf_deps = []
     for fd in fds:
-        left = set(fd['left'])
-        is_superkey = False
-        for key in primary_keys:
-            if key.issubset(left):
-                is_superkey = True
-                break
+        left = fd['left']
+        # Debug prints
+        print(f"Checking FD: {left} → {fd['right']}")
+        print(f"Left set: {left}")
+        
+        # Một tập thuộc tính là siêu khóa nếu nó chứa ít nhất một khóa
+        is_superkey = any(key.issubset(left) for key in primary_keys)
+        print(f"Is superkey: {is_superkey}")  # Debug print
+        
         if not is_superkey:
             non_bcnf_deps.append(fd)
     
@@ -192,7 +196,7 @@ def is_in_BCNF(primary_keys: List[Set[str]],
     
     return is_valid, explanation
 
-def check_normal_forms(attributes: str, dependencies: str, primary_keys: List[str]) -> Dict:
+def check_normal_forms(attributes: str, dependencies: str, primary_keys: List[Set[str]]) -> Dict:
     """
     Kiểm tra tất cả các dạng chuẩn
     """
@@ -207,14 +211,21 @@ def check_normal_forms(attributes: str, dependencies: str, primary_keys: List[st
                 'right': set(right.strip())
             })
         
-        # Chuyển đổi khóa chính
-        keys = [set(key.strip()) for key in primary_keys]
+        # Kiểm tra xem primary_keys có phải là list của sets không
+        if not all(isinstance(key, set) for key in primary_keys):
+            raise ValueError("Primary keys must be a list of sets")
+            
+        # Debug print
+        print("Checking with:")
+        print(f"Attributes: {attrs}")
+        print(f"Dependencies: {fds}")
+        print(f"Primary keys: {primary_keys}")
         
         # Kiểm tra từng dạng chuẩn
-        is_1nf, explanation_1nf = is_in_1NF(attrs, keys)
-        is_2nf, explanation_2nf = is_in_2NF(keys, fds)
-        is_3nf, explanation_3nf = is_in_3NF(keys, fds)
-        is_bcnf, explanation_bcnf = is_in_BCNF(keys, fds)
+        is_1nf, explanation_1nf = is_in_1NF(attrs, primary_keys)
+        is_2nf, explanation_2nf = is_in_2NF(primary_keys, fds)
+        is_3nf, explanation_3nf = is_in_3NF(primary_keys, fds)
+        is_bcnf, explanation_bcnf = is_in_BCNF(primary_keys, fds)
         
         return {
             'success': True,
