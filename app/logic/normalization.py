@@ -19,7 +19,7 @@ def is_in_1NF(attributes: Set[str], primary_keys: List[Set[str]]) -> Tuple[bool,
         is_valid = False
         explanation += "- KHÔNG thỏa mãn: Chưa xác định được khóa chính\n"
     else:
-        explanation += f"- Có khóa chính: {','.join([','.join(sorted(k)) for k in primary_keys])}\n"
+        explanation += f"- Có khóa chính: {';'.join([''.join(sorted(k)) for k in primary_keys])}\n"
     
     return is_valid, explanation
 def find_partial_dependencies(primary_keys: List[Set[str]], 

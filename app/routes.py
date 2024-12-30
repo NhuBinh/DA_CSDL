@@ -198,58 +198,6 @@ def check_normalization_api():
         return jsonify({
             'error': f'Lỗi server: {str(e)}'
         }), 500
-@main.route('/api/normalize', methods=['POST'])
-def normalize_api():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Dữ liệu không hợp lệ'}), 400
-            
-        attributes = data.get('attributes', '').strip()
-        dependencies = data.get('dependencies', '').strip()
-        target_nf = data.get('target_nf')
-        
-        if not attributes or not dependencies or not target_nf:
-            return jsonify({
-                'error': 'Vui lòng nhập đầy đủ thông tin'
-            }), 400
-        
-        # Import hàm normalize từ module normalization    
-        from .logic.normalization import normalize_to_nf
-        result = normalize_to_nf(attributes, dependencies, target_nf)
-        
-        if not result['success']:
-            return jsonify({
-                'error': f"Lỗi xử lý: {result.get('error', 'Không xác định')}"
-            }), 400
-        
-        # Chuyển đổi set thành list trong kết quả
-        normalized_relations = []
-        for relation in result['relations']:
-            normalized_relation = {
-                'name': relation['name'],
-                'attributes': list(relation['attributes']),  # Chuyển set thành list
-                'primary_key': list(relation['primary_key']),  # Chuyển set thành list
-                'fds': [
-                    {
-                        'left': list(fd['left']),  # Chuyển set thành list
-                        'right': list(fd['right'])  # Chuyển set thành list
-                    }
-                    for fd in relation['fds']
-                ]
-            }
-            normalized_relations.append(normalized_relation)
-        
-        return jsonify({
-            'success': True,
-            'current_nf': result['current_nf'],
-            'relations': normalized_relations
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'error': f'Lỗi server: {str(e)}'
-        }), 500
     
 @main.route('/minimal-cover')
 def minimal_cover_page():

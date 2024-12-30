@@ -338,7 +338,7 @@ function displayResults(response) {
     $('#keysInfo').html(`
         <div><strong>Tập nguồn (TN):</strong> {${response.keys_info.TN}}</div>
         <div><strong>Tập trung gian (TG):</strong> {${response.keys_info.TG}}</div>
-        <div><strong>Khóa chính:</strong> ${response.keys_info.primary_keys.map(key => `{${key}}`).join(', ')}</div>
+        <div><strong>Khóa chính:</strong> ${response.keys_info.primary_keys.map(key => `{${key}}`).join('; ')}</div>
     `);
 
     // Hiển thị kết quả từng dạng chuẩn
