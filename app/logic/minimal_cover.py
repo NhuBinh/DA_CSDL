@@ -79,6 +79,34 @@ def remove_redundant_left(F: List[Dict]) -> Tuple[List[Dict], List[str]]:
             steps.append("    Kết quả: Không bỏ được thuộc tính nào")
             
     return result, steps
+
+def remove_redundant_dependencies(F: List[Dict]) -> Tuple[List[Dict], List[str]]:
+    result = []
+    steps = []
+    current_F = F.copy()
+    
+    for i, fd in enumerate(F):
+        F_prime = F[:i] + F[i+1:]
+        left_str = ','.join(sorted(fd['left']))
+        right_str = ','.join(sorted(fd['right']))
+        
+        steps.append(f"\n  Xét {left_str}->{right_str}:")
+        left_closure = closure(fd['left'], F_prime)
+        closure_str = ','.join(sorted(left_closure))
+        
+        if fd['right'].issubset(left_closure):
+            steps.append(f"    Tính {left_str}+ = {closure_str}")
+            steps.append(f"    -> {closure_str} có chứa {right_str} nên dư thừa")
+            current_F.remove(fd)
+            # Format F hiện tại
+            deps_str = ', '.join(f"{','.join(sorted(d['left']))}->{','.join(sorted(d['right']))}" for d in current_F)
+            steps.append(f"    F hiện tại = {{{deps_str}}}")
+        else:
+            steps.append(f"    Tính {left_str}+ = {closure_str}")
+            steps.append(f"    -> {closure_str} không chứa {right_str} nên không dư thừa")
+            result.append(fd)
+        
+    return result, steps
 def find_minimal_cover(dependencies_str: str) -> Dict:
     try:
         F = []
@@ -125,7 +153,7 @@ def find_minimal_cover(dependencies_str: str) -> Dict:
             right = ','.join(sorted(fd['right']))
             final_deps.append(f"{left}->{right}")
             
-        all_steps.append(f"\nPhủ tối thiểu Ftt = {{{', '.join(final_deps)}}}")
+        all_steps.append(f"\nPhủ tối thiểu Ftt = {{{'; '.join(final_deps)}}}")
         
         return {
             'success': True,
@@ -138,31 +166,3 @@ def find_minimal_cover(dependencies_str: str) -> Dict:
             'success': False,
             'error': str(e)
         }
-
-def remove_redundant_dependencies(F: List[Dict]) -> Tuple[List[Dict], List[str]]:
-    result = []
-    steps = []
-    current_F = F.copy()
-    
-    for i, fd in enumerate(F):
-        F_prime = F[:i] + F[i+1:]
-        left_str = ','.join(sorted(fd['left']))
-        right_str = ','.join(sorted(fd['right']))
-        
-        steps.append(f"\n  Xét {left_str}->{right_str}:")
-        left_closure = closure(fd['left'], F_prime)
-        closure_str = ','.join(sorted(left_closure))
-        
-        if fd['right'].issubset(left_closure):
-            steps.append(f"    Tính {left_str}+ = {closure_str}")
-            steps.append(f"    -> {closure_str} có chứa {right_str} nên dư thừa")
-            current_F.remove(fd)
-            # Format F hiện tại
-            deps_str = ', '.join(f"{','.join(sorted(d['left']))}->{','.join(sorted(d['right']))}" for d in current_F)
-            steps.append(f"    F hiện tại = {{{deps_str}}}")
-        else:
-            steps.append(f"    Tính {left_str}+ = {closure_str}")
-            steps.append(f"    -> {closure_str} không chứa {right_str} nên không dư thừa")
-            result.append(fd)
-        
-    return result, steps
