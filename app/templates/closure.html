@@ -14,6 +14,7 @@
                 </label>
                 <input type="text" class="form-control form-control-lg" 
                        id="attributes" name="attributes" required
+                       value="{{ attributes or '' }}"
                        placeholder="Nhập các thuộc tính (VD: A, B, C)">
                 <div class="invalid-feedback">
                     Vui lòng nhập thuộc tính
@@ -26,6 +27,7 @@
                 </label>
                 <input type="text" class="form-control form-control-lg" 
                        id="dependencies" name="dependencies" required
+                       value="{{ dependencies or '' }}"
                        placeholder="Nhập phụ thuộc hàm (VD: A->B, B->C)">
                 <div class="invalid-feedback">
                     Vui lòng nhập phụ thuộc hàm
@@ -39,7 +41,13 @@
             </div>
         </form>
 
-        {% if result %}
+        {% if error %}
+        <div class="alert alert-danger mt-4" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+        </div>
+        {% endif %}
+
+        {% if result and result.is_success %}
         <div class="result mt-4">
             <div class="card">
                 <div class="card-header bg-success text-white">
@@ -48,7 +56,29 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    {{ result|format_closure_result|safe }}
+                    <div class="result-container">
+                        {% if result.closure %}
+                        <div class="closure-set mb-4">
+                            <h5 class="text-success">
+                                <i class="fas fa-check-circle me-2"></i>Bao đóng cuối cùng:
+                            </h5>
+                            <p class="ms-4 fw-bold mb-0">
+                                {{ result.closure | sort | join(', ') }}
+                            </p>
+                        </div>
+                        {% endif %}
+
+                        {% if result.steps %}
+                        <div class="steps-list">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-list-ol me-2"></i>Các bước thực hiện:
+                            </h5>
+                            {% for step in result.steps[:-1] %}
+                            <div class="step-item">{{ step }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -76,4 +106,21 @@
     font-size: 1.1rem;
 }
 </style>
+
+<script>
+// Form validation
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+        }, false)
+    })
+})()
+</script>
 {% endblock %}

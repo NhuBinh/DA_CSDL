@@ -1,19 +1,8 @@
 def closure(attributes, dependencies):
     """
     Tính bao đóng của một tập thuộc tính theo tập phụ thuộc hàm cho trước.
-    
-    Args:
-        attributes (str): Chuỗi các thuộc tính phân cách bởi dấu phẩy
-        dependencies (str): Chuỗi các phụ thuộc hàm phân cách bởi dấu chấm phẩy
-        
-    Returns:
-        dict: Kết quả bao gồm:
-            - closure (set): Tập bao đóng cuối cùng
-            - steps (list): Các bước tính toán chi tiết
-            - is_success (bool): True nếu tính toán thành công
     """
     try:
-        # Khởi tạo kết quả
         result = {
             'closure': set(),
             'steps': [],
@@ -21,21 +10,36 @@ def closure(attributes, dependencies):
         }
 
         # Xử lý input attributes
+        attributes = attributes.strip().rstrip(',')
         initial_attrs = set(attr.strip().upper() for attr in attributes.split(',') if attr.strip())
         if not initial_attrs:
             result['steps'].append("Lỗi: Tập thuộc tính đầu vào trống")
             return result
 
         # Xử lý input dependencies
+        dependencies = dependencies.strip().rstrip(',')
         deps = []
         for dep in dependencies.split(','):
+            dep = dep.strip()
             if '->' not in dep:
                 continue
-            lhs, rhs = dep.split('->')
-            lhs_set = set(attr.strip().upper() for attr in lhs.split(',') if attr.strip())
-            rhs_set = set(attr.strip().upper() for attr in rhs.split(',') if attr.strip())
-            if lhs_set and rhs_set:  # Chỉ thêm nếu cả hai vế không rỗng
-                deps.append((lhs_set, rhs_set))
+                
+            lhs, rhs = map(str.strip, dep.split('->'))
+            
+            # Xử lý vế trái có thể chứa nhiều thuộc tính
+            lhs_attrs = set()
+            for attr in lhs:
+                if attr.isalpha():
+                    lhs_attrs.add(attr.upper())
+            
+            # Xử lý vế phải có thể chứa nhiều thuộc tính
+            rhs_attrs = set()
+            for attr in rhs:
+                if attr.isalpha():
+                    rhs_attrs.add(attr.upper())
+            
+            if lhs_attrs and rhs_attrs:
+                deps.append((lhs_attrs, rhs_attrs))
 
         # Quá trình tính bao đóng
         closure_set = set(initial_attrs)
@@ -47,10 +51,10 @@ def closure(attributes, dependencies):
         while changed:
             changed = False
             for lhs, rhs in deps:
-                # Kiểm tra nếu có thể áp dụng phụ thuộc hàm
                 if lhs.issubset(closure_set):
                     new_attrs = rhs - closure_set
                     if new_attrs:
+                        old_closure = set(closure_set)
                         closure_set.update(new_attrs)
                         result['steps'].append(
                             f"Bước {step_count}: Áp dụng {', '.join(sorted(lhs))} → {', '.join(sorted(rhs))}\n"
@@ -65,7 +69,7 @@ def closure(attributes, dependencies):
 
         result['closure'] = closure_set
         result['is_success'] = True
-        result['steps'].append(f"\nBao đóng cuối cùng: {', '.join(sorted(closure_set))}")
+        result['steps'].append(f"Bao đóng cuối cùng: {', '.join(sorted(closure_set))}")
 
         return result
 
@@ -75,12 +79,3 @@ def closure(attributes, dependencies):
             'steps': [f"Lỗi xử lý: {str(e)}"],
             'is_success': False
         }
-
-def format_closure_result(result):
-    """
-    Format kết quả bao đóng để hiển thị
-    """
-    if not result['is_success']:
-        return "Lỗi khi tính bao đóng:\n" + "\n".join(result['steps'])
-    
-    return "\n".join(result['steps'])

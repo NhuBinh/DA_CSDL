@@ -55,8 +55,9 @@ def find_keys_api():
         return jsonify({
             'error': f'Lỗi server: {str(e)}'
         }), 500
+    
 @main.route('/closure', methods=['GET', 'POST'])
-def find_closure():  # Giữ tên route là 'closure' nhưng tên function là 'find_closure'
+def find_closure():
     if request.method == 'POST':
         try:
             attributes = request.form.get('attributes', '').strip()
@@ -68,14 +69,22 @@ def find_closure():  # Giữ tên route là 'closure' nhưng tên function là '
 
             result = closure(attributes, dependencies)
             
-            return render_template('closure.html', 
+            if not result['is_success']:
+                return render_template('closure.html',
+                                     error=result['steps'][-1],  # Lấy thông báo lỗi cuối cùng
+                                     attributes=attributes,
+                                     dependencies=dependencies)
+            
+            return render_template('closure.html',
                                  result=result,
                                  attributes=attributes,
                                  dependencies=dependencies)
                                  
         except Exception as e:
-            return render_template('closure.html', 
-                                 error=f"Lỗi: {str(e)}")
+            return render_template('closure.html',
+                                 error=f"Lỗi: {str(e)}",
+                                 attributes=attributes,
+                                 dependencies=dependencies)
             
     return render_template('closure.html')
 
