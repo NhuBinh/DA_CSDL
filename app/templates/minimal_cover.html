@@ -101,6 +101,24 @@
 
 {% block scripts %}
 <script>
+    function handleQQReplacement(element) {
+        const start = element.selectionStart;
+        const end = element.selectionEnd;
+        const currentValue = element.value;
+        const newValue = currentValue.replace(/QQ/g, '->');
+        
+        if (currentValue !== newValue) {
+            const adjustment = (newValue.length - currentValue.length) * 
+                             (currentValue.substring(0, start).match(/QQ/g) || []).length;
+            element.value = newValue; 
+            element.setSelectionRange(start + adjustment, end + adjustment);
+        }
+    }
+
+    // Add QQ replacement for dependencies input
+    $('#dependencies').on('input', function() {
+        handleQQReplacement(this);
+    });
 $(document).ready(function() {
     const form = $('#minimalCoverForm');
     const resultSection = $('#resultSection');

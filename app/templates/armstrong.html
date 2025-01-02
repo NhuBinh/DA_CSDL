@@ -43,7 +43,7 @@
                     <div class="col-md-6 mb-3">
                         <label for="dependencies">Tập phụ thuộc hàm F</label>
                         <textarea class="form-control" id="dependencies" rows="4" placeholder="VD: AE->C, CG->A" required></textarea>
-                        <div class="form-text">Mỗi phụ thuộc hàm dạng X->Y, cách nhau bởi dấu phẩy</div>
+                        <div class="form-text">Mỗi phụ thuộc hàm dạng X->Y hoặc XQQ Y, cách nhau bởi dấu phẩy</div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="armstrong_rule">Phụ thuộc cần chứng minh</label>
@@ -86,7 +86,30 @@ $(document).ready(function() {
     const form = $('#armstrongForm');
     const result = $('#result');
     const proofSteps = $('#proofSteps');
+    function handleQQReplacement(element) {
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    const currentValue = element.value;
+    const newValue = currentValue.replace(/QQ/g, '->');
+    
+    if (currentValue !== newValue) {
+        // Tính toán độ chênh lệch cho mỗi lần thay thế
+        const adjustment = (newValue.length - currentValue.length) * 
+                         (currentValue.substring(0, start).match(/QQ/g) || []).length;
+        
+        element.value = newValue;
+        element.setSelectionRange(start + adjustment, end + adjustment);
+    }
+}
+    // Áp dụng cho textarea dependencies
+    $('#dependencies').on('input', function() {
+        handleQQReplacement(this);
+    });
 
+    // Áp dụng cho input armstrong_rule
+    $('#armstrong_rule').on('input', function() {
+        handleQQReplacement(this);
+    });
     form.on('submit', function(e) {
         e.preventDefault();
         

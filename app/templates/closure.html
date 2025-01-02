@@ -32,6 +32,9 @@
                 <div class="invalid-feedback">
                     Vui lòng nhập phụ thuộc hàm
                 </div>
+                <small class="form-text text-muted">
+                    Bạn có thể nhập "QQ" thay cho "->" (VD: AQQ B)
+                </small>
             </div>
 
             <div class="d-grid gap-2">
@@ -122,5 +125,28 @@
         }, false)
     })
 })()
+// Auto replace QQ with ->
+document.addEventListener('DOMContentLoaded', function() {
+    const dependenciesInput = document.getElementById('dependencies');
+    
+    dependenciesInput.addEventListener('input', function() {
+        const currentValue = this.value;
+        const newValue = currentValue.replace(/QQ/g, '->');
+        
+        // Chỉ cập nhật nếu có sự thay đổi
+        if (currentValue !== newValue) {
+            // Lưu vị trí con trỏ
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            
+            // Cập nhật giá trị
+            this.value = newValue;
+            
+            // Điều chỉnh vị trí con trỏ
+            const adjustment = newValue.length - currentValue.length;
+            this.setSelectionRange(start + adjustment, end + adjustment);
+        }
+    });
+});
 </script>
 {% endblock %}

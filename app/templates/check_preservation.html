@@ -87,6 +87,25 @@
     </style>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto replace QQ with -> for dependencies input
+    const dependenciesInput = document.getElementById('dependencies');
+    
+    dependenciesInput.addEventListener('input', function() {
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        const currentValue = this.value;
+        const newValue = currentValue.replace(/QQ/g, '->');
+        
+        if (currentValue !== newValue) {
+            const adjustment = (newValue.length - currentValue.length) * 
+                             (currentValue.substring(0, start).match(/QQ/g) || []).length;
+            
+            this.value = newValue;
+            this.setSelectionRange(start + adjustment, end + adjustment);
+        }
+    });
+});
 document.getElementById('exampleBtn').onclick = async () => {
     const response = await fetch('/check-preservation', {
         method: 'POST',
