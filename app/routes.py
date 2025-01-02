@@ -1,5 +1,5 @@
 
-from flask import Blueprint, flash, redirect, render_template, request, jsonify
+from flask import Blueprint, flash, redirect, render_template, request, jsonify, url_for
 
 from app.logic.check_preservation import check_information_preservation
 from app.logic.fd_analyzer import FunctionalDependency
@@ -271,64 +271,71 @@ def check_preservation():
 def dependency_preservation():
     if request.method == 'POST':
         try:
+            # Lấy dữ liệu từ form
             attributes = request.form.get('attributes', '').strip()
             dependencies = request.form.get('dependencies', '').strip()
             decomposition = request.form.get('decomposition', '').strip()
 
-            if not all([attributes, dependencies, decomposition]):
-                flash('Vui lòng điền đầy đủ thông tin', 'warning')
-                return redirect('/dependency_preservation')
+            # Kiểm tra dữ liệu đầu vào không được trống
+            if not attributes or not dependencies or not decomposition:
+                flash('Vui lòng điền đầy đủ thông tin', 'danger')
+                return redirect(url_for('main.dependency_preservation'))
 
-            # Process attributes
-            attr_list = set(attr.strip() for attr in attributes.split(','))
-
-            # Process dependencies
-            fd_list = []
-            for dep in dependencies.splitlines():
+            # Validate attributes
+            attr_set = set(attr.strip() for attr in attributes.split(',') if attr.strip())
+            
+            # Validate dependencies
+            for dep in dependencies.split('\n'):
                 if not dep.strip():
                     continue
-                try:
-                    left_str, right_str = dep.strip().split('->')
-                    left = [x.strip() for x in left_str.split(',')]
-                    right = right_str.strip()
-                    
-                    if not (set(left).issubset(attr_list) and right in attr_list):
-                        raise ValueError(f"Thuộc tính không tồn tại trong lược đồ: {dep}")
-                        
-                    fd_list.append(FunctionalDependency(left, right))
-                except Exception as e:
-                    flash(f'Lỗi phụ thuộc hàm không hợp lệ: {dep}', 'danger')
-                    return redirect('/dependency_preservation')
-
-            # Process decomposition
-            decomp_list = []
-            for dec in decomposition.splitlines():
-                if not dec.strip():
-                    continue
-                decomp_attrs = [x.strip() for x in dec.split(',')]
+                if '->' not in dep:
+                    flash(f'Lỗi định dạng phụ thuộc hàm: {dep}', 'danger')
+                    return redirect(url_for('main.dependency_preservation'))
                 
-                if not set(decomp_attrs).issubset(attr_list):
-                    flash(f'Lược đồ con chứa thuộc tính không tồn tại: {dec}', 'danger')
-                    return redirect('/dependency_preservation')
-                    
-                decomp_list.append(decomp_attrs)
+                left, right = dep.split('->')
+                left_attrs = set(attr.strip() for attr in left.split(',') if attr.strip())
+                right_attrs = set(attr.strip() for attr in right.split(',') if attr.strip())
+                
+                # Kiểm tra các thuộc tính có tồn tại trong tập thuộc tính không
+                invalid_left = left_attrs - attr_set
+                invalid_right = right_attrs - attr_set
+                
+                if invalid_left:
+                    flash(f'Thuộc tính không hợp lệ ở vế trái: {", ".join(invalid_left)}', 'danger')
+                    return redirect(url_for('main.dependency_preservation'))
+                if invalid_right:
+                    flash(f'Thuộc tính không hợp lệ ở vế phải: {", ".join(invalid_right)}', 'danger')
+                    return redirect(url_for('main.dependency_preservation'))
 
-            # Check preservation with detailed steps
-            is_preserved, message, steps = FunctionalDependency.check_preservation(fd_list, decomp_list)
+            # Validate decomposition
+            for rel in decomposition.split('\n'):
+                if not rel.strip():
+                    continue
+                rel_attrs = set(attr.strip() for attr in rel.split(',') if attr.strip())
+                invalid_attrs = rel_attrs - attr_set
+                if invalid_attrs:
+                    flash(f'Thuộc tính không hợp lệ trong lược đồ: {", ".join(invalid_attrs)}', 'danger')
+                    return redirect(url_for('main.dependency_preservation'))
+
+            # Thực hiện kiểm tra bảo toàn phụ thuộc
+            is_preserved, message, steps = FunctionalDependency.check_preservation(dependencies, decomposition)
             
-            alert_type = 'success' if is_preserved else 'warning'
-            flash(message, alert_type)
+            if is_preserved:
+                flash(message, 'success')
+            else:
+                flash(message, 'danger')
             
-            return render_template('dependency_preservation.html', 
-                                 attributes=attributes,
-                                 dependencies=dependencies,
-                                 decomposition=decomposition,
-                                 steps=steps)
+            return render_template('dependency_preservation.html',
+                                attributes=attributes,
+                                dependencies=dependencies,
+                                decomposition=decomposition,
+                                steps=steps)
 
         except Exception as e:
-            flash(f'Lỗi xử lý: {str(e)}', 'danger')
-            return redirect('/dependency_preservation')
+            flash(f'Có lỗi xảy ra: {str(e)}', 'danger')
+            return redirect(url_for('main.dependency_preservation'))
 
+    # GET request
     return render_template('dependency_preservation.html')
 
 
