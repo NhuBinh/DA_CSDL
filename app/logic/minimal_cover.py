@@ -1,5 +1,4 @@
 from typing import Set, List, Dict, Tuple
-from .closure import closure  # Import hàm tính bao đóng từ module closure
 
 def split_right_side(F: List[Dict]) -> List[Dict]:
     """
@@ -20,7 +19,7 @@ def closure(X: Set[str], F: List[Dict]) -> Set[str]:
     """
     Tính bao đóng của tập thuộc tính X
     """
-    closure_set = set(X)  # Bắt đầu với tập X
+    closure_set = set(X)
     changed = True
     
     while changed:
@@ -43,25 +42,19 @@ def remove_redundant_left(F: List[Dict]) -> Tuple[List[Dict], List[str]]:
         left = set(fd['left'])
         right = set(fd['right'])
         
-        # Nếu vế trái chỉ có 1 thuộc tính thì giữ nguyên
         if len(left) == 1:
             result.append({'left': left, 'right': right})
             steps.append(f"  {','.join(sorted(left))}->{','.join(sorted(right))}: Không xét vì vế trái chỉ có một thuộc tính")
             continue
             
-        # Kiểm tra từng thuộc tính ở vế trái
-        new_left = set(left)  # Copy để giữ tập ban đầu
+        new_left = set(left)
         steps.append(f"\n  Xét {','.join(sorted(left))}->{','.join(sorted(right))}:")
         
         removed_attrs = set()
         for attr in left:
-            # Tạo tập thuộc tính vế trái mới bằng cách bỏ đi attr
             test_left = left - {attr}
-            
-            # Tính bao đóng của tập mới
             test_closure = closure(test_left, F)
             
-            # Kiểm tra xem có thể bỏ được attr không
             steps.append(f"    Nếu bỏ {attr}: {','.join(sorted(test_left))}+ = {','.join(sorted(test_closure))}")
             if right.issubset(test_closure):
                 steps.append(f"    -> {','.join(sorted(test_closure))} chứa {','.join(sorted(right))} nên có thể bỏ {attr}")
@@ -69,7 +62,6 @@ def remove_redundant_left(F: List[Dict]) -> Tuple[List[Dict], List[str]]:
             else:
                 steps.append(f"    -> {','.join(sorted(test_closure))} không chứa {','.join(sorted(right))} nên không thể bỏ {attr}")
         
-        # Cập nhật vế trái sau khi bỏ các thuộc tính dư thừa
         new_left = left - removed_attrs
         result.append({'left': new_left, 'right': right})
         
@@ -85,28 +77,34 @@ def remove_redundant_dependencies(F: List[Dict]) -> Tuple[List[Dict], List[str]]
     steps = []
     current_F = F.copy()
     
-    for i, fd in enumerate(F):
-        F_prime = F[:i] + F[i+1:]
+    i = 0
+    while i < len(current_F):
+        fd = current_F[i]
+        # Tạo F' bằng cách loại bỏ phụ thuộc hàm hiện tại
+        F_prime = current_F[:i] + current_F[i+1:]
+        
         left_str = ','.join(sorted(fd['left']))
         right_str = ','.join(sorted(fd['right']))
         
         steps.append(f"\n  Xét {left_str}->{right_str}:")
+        # Tính bao đóng dựa trên F' hiện tại
         left_closure = closure(fd['left'], F_prime)
         closure_str = ','.join(sorted(left_closure))
         
         if fd['right'].issubset(left_closure):
             steps.append(f"    Tính {left_str}+ = {closure_str}")
             steps.append(f"    -> {closure_str} có chứa {right_str} nên dư thừa")
-            current_F.remove(fd)
-            # Format F hiện tại
+            current_F.pop(i)  # Xóa phụ thuộc hàm hiện tại
+            # Không tăng i vì đã xóa phần tử hiện tại
             deps_str = ', '.join(f"{','.join(sorted(d['left']))}->{','.join(sorted(d['right']))}" for d in current_F)
             steps.append(f"    F hiện tại = {{{deps_str}}}")
         else:
             steps.append(f"    Tính {left_str}+ = {closure_str}")
             steps.append(f"    -> {closure_str} không chứa {right_str} nên không dư thừa")
-            result.append(fd)
-        
-    return result, steps
+            i += 1  # Chỉ tăng i khi không xóa phần tử
+            
+    return current_F, steps
+
 def find_minimal_cover(dependencies_str: str) -> Dict:
     try:
         F = []
@@ -128,7 +126,6 @@ def find_minimal_cover(dependencies_str: str) -> Dict:
         for fd in F1:
             all_steps.append(f"  {','.join(sorted(fd['left']))}->{','.join(sorted(fd['right']))}")
         
-        # Hiển thị F1
         deps_str = ', '.join(f"{','.join(sorted(fd['left']))}->{','.join(sorted(fd['right']))}" for fd in F1)
         all_steps.append(f"\nSau bước 1, ta có F1 = {{{deps_str}}}")
             
@@ -137,7 +134,6 @@ def find_minimal_cover(dependencies_str: str) -> Dict:
         all_steps.append("\nBước 2: Bỏ các thuộc tính dư thừa ở vế trái:")
         all_steps.extend(step2_details)
         
-        # Hiển thị F2
         deps_str = ', '.join(f"{','.join(sorted(fd['left']))}->{','.join(sorted(fd['right']))}" for fd in F2)
         all_steps.append(f"\nSau bước 2, ta có F2 = {{{deps_str}}}")
             
