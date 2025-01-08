@@ -12,9 +12,7 @@ main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    with open("README.md", "r", encoding="utf-8") as file:
-        readme_content = file.read()
-    return render_template('base.html', readme_content=readme_content)
+    return render_template('index.html')
 
 @main.route('/keys')
 def find_keys_page():

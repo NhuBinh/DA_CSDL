@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Copy everything between the first <div class="hero"> and the last </div> (before the script tag) -->
+<!-- Hero Section -->
+<div class="hero">
+  <h1 class="hero-title">
+      <i class="fas fa-database text-primary mb-3"></i>
+      <span class="d-block">Database Helper</span>
+  </h1>
+  <p class="hero-subtitle">
+    Công cụ hỗ trợ học môn <strong>Cơ sở dữ liệu</strong> với các tính năng phân tích và xử lý các khái niệm quan trọng.
+    <strong>Database Helper</strong> là một dự án được thiết kế để hỗ trợ sinh viên và giảng viên trong việc học tập và giảng dạy môn cơ sở dữ liệu một cách hiệu quả.
+</p>
+
+</div>
+
+<!-- Features Grid -->
+<div class="container">
+  <div class="features-grid">
+      <a href="{{ url_for('main.find_closure') }}" class="feature-card">
+          <div class="feature-header">
+              <div class="feature-icon">
+                  <i class="fas fa-search"></i>
+              </div>
+              <h3 class="feature-title">Tìm bao đóng</h3>
+          </div>
+          <p class="feature-description">Tính toán tập thuộc tính bao đóng một cách hiệu quả.</p>
+      </a>
+
+      <a href="{{ url_for('main.find_keys_page') }}" class="feature-card">
+          <div class="feature-header">
+              <div class="feature-icon">
+                  <i class="fas fa-key"></i>
+              </div>
+              <h3 class="feature-title">Tìm khóa</h3>
+          </div>
+          <p class="feature-description">Xác định khóa chính của quan hệ một cách nhanh chóng và chính xác.</p>
+      </a>
+
+      <a href="{{ url_for('main.armstrong') }}" class="feature-card">
+          <div class="feature-header">
+              <div class="feature-icon">
+                  <i class="fas fa-book"></i>
+              </div>
+              <h3 class="feature-title">Chứng minh Armstrong</h3>
+          </div>
+          <p class="feature-description">Hỗ trợ kiểm tra và chứng minh các quy tắc Armstrong.</p>
+      </a>
+
+      <a href="{{ url_for('main.normalization_page') }}" class="feature-card">
+          <div class="feature-header">
+              <div class="feature-icon">
+                  <i class="fas fa-columns"></i>
+              </div>
+              <h3 class="feature-title">Dạng chuẩn</h3>
+          </div>
+          <p class="feature-description">Phân tích và chuyển đổi giữa các dạng chuẩn (1NF, 2NF, 3NF, BCNF).</p>
+      </a>
+
+      <a href="{{ url_for('main.minimal_cover_page') }}" class="feature-card">
+          <div class="feature-header">
+              <div class="feature-icon">
+                  <i class="fas fa-layer-group"></i>
+              </div>
+              <h3 class="feature-title">Phủ tối thiểu</h3>
+          </div>
+          <p class="feature-description">Tối ưu hóa và tối giản tập phụ thuộc hàm.</p>
+      </a>
+
+      <a href="{{ url_for('main.info_preservation') }}" class="feature-card">
+          <div class="feature-header">
+              <div class="feature-icon">
+                  <i class="fas fa-shield-alt"></i>
+              </div>
+              <h3 class="feature-title">Bảo toàn thông tin</h3>
+          </div>
+          <p class="feature-description">Phân tích tính toàn vẹn trong quá trình phân rã quan hệ.</p>
+      </a>
+  </div>
+
+  <div class="team-section">
+    <h2 class="text-center mb-4">Thông tin nhóm</h2>
+    <div class="team-grid two-columns">
+      <div class="team-member">
+        <div class="member-icon">
+            <i class="fas fa-user"></i>
+        </div>
+        <span>Nguyễn Ngọc Như Bình</span>
+        <div class="social-links">
+            <a href="https://www.facebook.com/nhubinh.203" target="_blank" class="social-icon">
+                <i class="fab fa-facebook-f"></i>
+            </a>
+            <a href="https://www.instagram.com/_n.binn" target="_blank" class="social-icon">
+                <i class="fab fa-instagram"></i>
+            </a>
+            <a href="https://github.com/NhuBinh" target="_blank" class="social-icon">
+                <i class="fab fa-github"></i>
+            </a>
+        </div>
+    </div>
+    <div class="team-member">
+        <div class="member-icon">
+            <i class="fas fa-user"></i>
+        </div>
+        <span>Phạm Doãn Hoàng Dân</span>
+        <div class="social-links">
+          <a href="https://www.facebook.com/hoangdanJF/" target="_blank" class="social-icon">
+              <i class="fab fa-facebook-f"></i>
+          </a>
+          <a href="https://www.instagram.com/sleepydian/" target="_blank" class="social-icon">
+              <i class="fab fa-instagram"></i>
+          </a>
+          <a href="https://github.com/DianPham" target="_blank" class="social-icon">
+              <i class="fab fa-github"></i>
+          </a>
+      </div>
+    </div>
+        <div class="team-member">
+            <div class="member-icon">
+                <i class="fas fa-user"></i>
+            </div>
+            <span>Nguyễn Đức Tuấn</span>
+            <div class="social-links">
+              <a href="https://www.facebook.com/profile.php?id=100025205990631" target="_blank" class="social-icon">
+                  <i class="fab fa-facebook-f"></i>
+              </a>
+              <a href="" target="_blank" class="social-icon">
+                <i class="fab fa-instagram"></i>
+            </a>
+            <a href="" target="_blank" class="social-icon">
+                <i class="fab fa-github"></i>
+            </a>
+          </div>
+        </div>
+        <div class="team-member">
+            <div class="member-icon">
+                <i class="fas fa-user"></i>
+            </div>
+            <span>Trương Anh Tuấn</span>
+            <div class="social-links">
+              <a href="https://www.facebook.com/truong.a.tuan.2024" target="_blank" class="social-icon">
+                  <i class="fab fa-facebook-f"></i>
+              </a>
+              <a href="" target="_blank" class="social-icon">
+                <i class="fab fa-instagram"></i>
+            </a>
+            <a href="" target="_blank" class="social-icon">
+                <i class="fab fa-github"></i>
+            </a>
+            </div>
+        </div>
+    </div>
+    <div class="text-center mt-4">Get in touch with the responsible individual:
+        <a href="mailto:binhn8115@gmail.com" class="text-primary">
+            <i class="fas fa-envelope me-2"></i>binhn8115@gmail.com
+        </a>
+    </div>
+  </div>
+
+  <!-- Guide Section -->
+  <div class="guide-section">
+      <h2 class="text-center mb-4">Hướng dẫn sử dụng</h2>
+      <div class="step-list">
+          <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                  <h4>Chọn công cụ</h4>
+                  <p>Truy cập vào thanh điều hướng và chọn công cụ phù hợp với nhu cầu của bạn.</p>
+              </div>
+          </div>
+          <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                  <h4>Nhập dữ liệu</h4>
+                  <p>Điền thông tin cần thiết theo hướng dẫn của từng công cụ.</p>
+              </div>
+          </div>
+          <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                  <h4>Xem kết quả</h4>
+                  <p>Nhận kết quả phân tích và sử dụng cho mục đích học tập.</p>
+              </div>
+          </div>
+      </div>
+  </div>
+</div>
+
+<!-- Copy everything between the <style> tags -->
+  <style>
+    :root {
+        --primary: #3498db;
+        --secondary: #2ecc71;
+        --bg-light: #f8f9fa;
+        --shadow: rgba(0, 0, 0, 0.1);
+    }
+
+    /* General Styles */
+    body {
+        background: linear-gradient(to bottom, var(--bg-light), white);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Hero Section */
+    .hero {
+        text-align: center;
+        padding: 4rem 0;
+    }
+
+    .hero-title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1.25rem;
+        color: #666;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    /* Feature Cards */
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        padding: 2rem 0;
+    }
+
+    .feature-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px var(--shadow);
+        transition: all 0.3s ease;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px var(--shadow);
+    }
+
+    .feature-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .feature-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+    }
+
+    .feature-icon i {
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .feature-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .feature-description {
+        color: #666;
+        margin: 0;
+    }
+
+    /* Team Section */
+    .team-section {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px var(--shadow);
+        margin: 2rem 0;
+    }
+
+    .team-grid.two-columns {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        justify-content: center;
+    }
+
+    .team-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .social-links {
+        margin-top: 0.5rem;
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .social-icon {
+        width: 30px;
+        height: 30px;
+        background: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1rem;
+        transition: background 0.3s ease, transform 0.3s ease;
+    }
+    
+    .social-icon:hover {
+        background: var(--secondary);
+        transform: scale(1.1);
+    }
+
+    .team-member {
+        background: var(--bg-light);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .member-icon {
+        width: 50px;
+        height: 50px;
+        background: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .member-icon i {
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    /* Guide Section */
+    .guide-section {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px var(--shadow);
+        margin: 2rem 0;
+    }
+
+    .step-list {
+        list-style: none;
+        padding: 0;
+        counter-reset: step;
+    }
+
+    .step-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+        counter-increment: step;
+    }
+
+    .step-number {
+        width: 32px;
+        height: 32px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .step-content h4 {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 1rem;
+        }
+        
+        .hero-title {
+            font-size: 2rem;
+        }
+        
+        .feature-card {
+            margin-bottom: 1rem;
+        }
+    }
+</style>
+
+<script>
+  // Add hover effects to feature cards
+  document.querySelectorAll('.feature-card').forEach(card => {
+      card.addEventListener('mouseenter', () => {
+          card.style.transform = 'translateY(-5px)';
+          card.style.boxShadow = '0 6px 12px rgba(0,0,0,0.1)';
+      });
+      
+      card.addEventListener('mouseleave', () => {
+          card.style.transform = 'translateY(0)';
+          card.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+      });
+  });
+</script>
+{% endblock %}
